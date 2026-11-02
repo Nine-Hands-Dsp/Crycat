@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include <BinaryData.h>
+#include "WigaWindowSize.h"
 
 using namespace juce;
 
@@ -412,21 +413,33 @@ namespace
     };
 
     //==========================================================================
-    // menu de taille de fenêtre (identique à Ring Think / Wharry)
-    bool isDefaultSize (const CrycatEditor* ed) { return ed != nullptr && std::abs ((float) ed->getHeight() / kRefH - kDefaultScale) < 0.02f; }
+    // menu de taille de fenêtre (identique à Ring Think / Wharry) + taille par défaut des nouvelles fenêtres (comme Octopus)
+    constexpr int kNumSizes = 3;           // 60 % (défaut d'origine) / 75 % / 100 %
 
     void addSizeItems (PopupMenu& m, const CrycatEditor* ed)
     {
         const int cur = ed != nullptr ? ed->getScaleIndex() : -1;
-        m.addItem (904, "60 % (default)", true, isDefaultSize (ed));
-        m.addItem (902, "75 %", true, cur == 1);
-        m.addItem (903, "100 %", true, cur == 2);
+        const int def = WigaWindowSize::defaultIndex (JucePlugin_Name, kNumSizes);
+        const char* names[kNumSizes] = { "60 %", "75 %", "100 %" };
+        PopupMenu defSizes;
+        for (int i = 0; i < kNumSizes; ++i)
+        {
+            m.addItem (901 + i, String (names[i]) + (i == def ? "  (default)" : ""), true, cur == i);
+            defSizes.addItem (911 + i, names[i], true, i == def);
+        }
+        m.addSeparator();
+        m.addSubMenu ("Default size (new windows)", defSizes);
     }
 
     void handleSizeChoice (int r, CrycatEditor* ed)
     {
-        if (ed == nullptr || r < 902 || r > 904) return;
-        ed->setScaleIndex (r == 904 ? -1 : r - 901);
+        if (ed == nullptr) return;
+        if (r >= 901 && r < 901 + kNumSizes) ed->setScaleIndex (r - 901);
+        else if (r >= 911 && r < 911 + kNumSizes)
+        {
+            WigaWindowSize::setDefaultIndex (JucePlugin_Name, r - 911);   // toutes les nouvelles fenêtres de ce plugin
+            ed->setScaleIndex (r - 911);                                  // et cette fenêtre tout de suite
+        }
     }
 
     Point<float> rangeNumberPos (int i) { return kNumPos[jlimit (0, crycat::kNumRanges - 1, i)]; }
@@ -1013,8 +1026,9 @@ private:
             m.addSeparator();
             if (learnIdx < 0) addMidiSubmenu (m);
         }
-        m.addSectionHeader ("Plugin size");
-        addSizeItems (m, ed);
+        PopupMenu sizes;
+        addSizeItems (sizes, ed);
+        m.addSubMenu ("Plugin size", sizes);
 
         Component::SafePointer<PedalView> sp (this);
         m.showMenuAsync (PopupMenu::Options(), [sp] (int res)
@@ -1082,7 +1096,11 @@ CrycatEditor::CrycatEditor (CrycatProcessor& p) : AudioProcessorEditor (&p), pro
     setResizeLimits ((int) std::lround ((double) minH * kW / kH), minH, (int) std::lround ((double) maxH * kW / kH), maxH);
     getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
     setOpaque (true);                    // anti-gel : l'hôte ne redessine jamais ce qui est derrière la fenêtre
-    setScaleIndex (jlimit (-1, 2, proc.uiScaleIdx.load()));
+    // taille d'ouverture : celle enregistrée pour cette instance (projet) si elle existe,
+    // sinon celle choisie dans le menu « Default size (new windows) »
+    const int saved = jlimit (-1, 2, proc.uiScaleIdx.load());
+    if (saved >= 0) setScaleIndex (saved);
+    else            applyScaleIndex (WigaWindowSize::defaultIndex (JucePlugin_Name, kNumSizes));
     view->initCaches();
 }
 
@@ -1142,16 +1160,20 @@ void CrycatEditor::resized()
 int CrycatEditor::getScaleIndex() const
 {
     const float sc = (float) getHeight() / kRefH;
-    for (int i = 1; i < 3; ++i) if (std::abs (sc - kScales[i]) < 0.02f) return i;
+    for (int i = 0; i < 3; ++i) if (std::abs (sc - kScales[i]) < 0.02f) return i;
     return -1;
 }
 
 void CrycatEditor::setScaleIndex (int idx)
 {
-    idx = jlimit (-1, 2, idx);
-    if (idx == 0) idx = -1;
-    proc.uiScaleIdx = idx;
-    const float sc = idx < 0 ? kDefaultScale : kScales[idx];
+    idx = jlimit (0, 2, idx);
+    proc.uiScaleIdx = idx;               // taille choisie pour cette instance (enregistrée avec le projet)
+    applyScaleIndex (idx);
+}
+
+void CrycatEditor::applyScaleIndex (int idx)
+{
+    const float sc = kScales[jlimit (0, 2, idx)];
     const int h = (int) std::lround (kRefH * sc);
     setSize ((int) std::lround ((double) h * kW / kH), h);
 }

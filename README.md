@@ -14,6 +14,9 @@ au format **pédale double** (fenêtre aux hauteurs de Ring Think : 486 x 495 pa
   Program Change 1-10 = presets usine
 - Écran ambre : plage, état, courbe de réponse en direct, fréquence centrale, Q, boost, course de la pédale, ligne d'état en %
 - 10 presets usine
+- Clic droit > **Plugin size** : 60 %, 75 %, 100 % (la taille par défaut porte la mention « (default) ») ; **Default size (new windows)** :
+  taille d'ouverture des nouvelles fenêtres (60 % à l'origine), commune à toutes les instances, qui redimensionne aussi la fenêtre courante.
+  Une taille choisie dans un projet reste enregistrée pour cette instance.
 
 v1.4.1 : pédale d'expression MIDI inversée par défaut (option « Invert pedal direction » cochée à l'ouverture)
 v1.4.0 : anti-gel v2 (JUCE 8.0.15, caches refaits par le timer, chien de garde, aucun appel à l'hôte depuis le thread audio)
@@ -34,3 +37,4 @@ Tests du moteur audio : `g++ -O2 -std=c++17 tests/test_dsp.cpp -o test_dsp && ./
 
 - v1.4.2 : menu de taille de fenêtre : « 60 % (default) », 75 %, 100 % (plus de taille en pixels)
 - v1.5.0 : MIDI Learn au clic droit sur chaque commande (Clear MIDI, assignations sauvegardées avec le projet)
+- v1.6.0 : clic droit > Plugin size > Default size (new windows) : taille par défaut des nouvelles fenêtres au choix, comme dans Octopus

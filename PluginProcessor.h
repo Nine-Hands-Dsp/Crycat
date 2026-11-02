@@ -92,7 +92,7 @@ public:
     void pollCalibration();
     bool isCalibrating() const { return juce::Time::getMillisecondCounter() < calibUntil.load(); }
 
-    std::atomic<int> uiScaleIdx { -1 };    // -1 = taille par défaut (67 %), 1 = 75 %, 2 = 100 %
+    std::atomic<int> uiScaleIdx { -1 };    // -1 = rien d'enregistré (taille par défaut choisie), 0 = 60 %, 1 = 75 %, 2 = 100 %
 
     juce::AudioProcessorValueTreeState apvts;
 
