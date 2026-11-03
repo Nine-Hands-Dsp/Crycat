@@ -25,7 +25,7 @@ const FactoryPreset& CrycatProcessor::factory (int i)
 // ------------------------------------------------------------------ MIDI Learn
 const CrycatProcessor::LearnDef& CrycatProcessor::learnDef (int i)
 {
-    // pedale d'expression : CC 11 par defaut (comme avant) ; les autres commandes ne sont pas assignees par defaut
+    // aucune commande assignee par defaut ; 3e champ = ancienne table d'usine (< v1.6.1 : pedale CC 11)
     static const LearnDef defs[numLearn] =
     {
         { "pedal",  "Wah pedal",           11, learnContinuous, 0 },
@@ -39,10 +39,10 @@ const CrycatProcessor::LearnDef& CrycatProcessor::learnDef (int i)
     return defs[jlimit (0, numLearn - 1, i)];
 }
 
-void CrycatProcessor::resetMidiMap()
+void CrycatProcessor::clearMidiMap()
 {
     learnTarget = -1;
-    for (int i = 0; i < numLearn; ++i) ccMap[i].store (learnDef (i).defaultCC);
+    for (int i = 0; i < numLearn; ++i) ccMap[i].store (-1);
     noteAuto = -1; noteFs = -1;
 }
 
@@ -114,7 +114,7 @@ CrycatProcessor::CrycatProcessor()
     apvts.addParameterListener ("pedal", this);
     pedalLive = pPedal->load();
     for (int i = 0; i < numQueued; ++i) { pendingValue[i] = 0.0f; pendingSet[i] = false; queuedPtr[i] = apvts.getRawParameterValue (queuedId (i)); }
-    resetMidiMap();
+    clearMidiMap();      // aucun CC assigne par defaut
     startTimerHz (60);   // anti-gel v2 : aucun appel à l'hôte depuis le thread audio
 }
 
@@ -293,8 +293,7 @@ void CrycatProcessor::handleMidiMessage (const MidiMessage& m)
 
 void CrycatProcessor::clearMidi (MidiTarget t)
 {
-    if (t == MidiTarget::Pedal) { ccMap[lPedal] = 11; if (learnTarget.load() == lPedal) learnTarget = -1; }   // « Reset to CC 11 »
-    else clearLearn (learnIndexOf (t));
+    clearLearn (learnIndexOf (t));   // pedale comprise : plus de CC 11 par defaut (v1.6.1)
 }
 
 String CrycatProcessor::getMidiDescription (MidiTarget t) const
@@ -470,17 +469,24 @@ void CrycatProcessor::setStateInformation (const void* data, int size)
             const auto st = ValueTree::fromXml (*xml);
             apvts.replaceState (st);
             // assignations MIDI Learn (-1 = non assigne) ; projet < 1.5 : ccPedal / ccAuto / ccFs
+            // ancien projet dont la table est exactement l'ancienne table d'usine (pedale CC 11, rien d'autre) :
+            // jamais modifiee -> videe (aucun CC par defaut depuis v1.6.1)
             learnTarget = -1;
+            int loaded[numLearn];
+            const int nAuto = (int) st.getProperty ("noteAuto", -1), nFs = (int) st.getProperty ("noteFs", -1);
+            bool factory = nAuto < 0 && nFs < 0;
             for (int i = 0; i < numLearn; ++i)
             {
-                const var legacy = i == lPedal ? st.getProperty ("ccPedal", 11)
+                const var legacy = i == lPedal ? st.getProperty ("ccPedal", -1)
                                  : i == lAuto  ? st.getProperty ("ccAuto", -1)
                                  : i == lFs    ? st.getProperty ("ccFs", -1)
-                                               : var (learnDef (i).defaultCC);
-                ccMap[i].store (jlimit (-1, 127, (int) st.getProperty (String ("cc_") + learnDef (i).id, legacy)));
+                                               : var (-1);
+                loaded[i] = jlimit (-1, 127, (int) st.getProperty (String ("cc_") + learnDef (i).id, legacy));
+                factory = factory && loaded[i] == learnDef (i).legacyCC;
             }
-            noteAuto = (int) st.getProperty ("noteAuto", -1);
-            noteFs   = (int) st.getProperty ("noteFs", -1);
+            for (int i = 0; i < numLearn; ++i) ccMap[i].store (factory ? -1 : loaded[i]);
+            noteAuto = nAuto;
+            noteFs   = nFs;
             uiScaleIdx = jlimit (-1, 2, (int) st.getProperty ("uiScaleIdx", -1));
             currentFactory = jlimit (0, kNumFactory - 1, (int) st.getProperty ("factory", 0));
             autoMin = (float) (double) st.getProperty ("autoMin", 1.0);

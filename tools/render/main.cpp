@@ -33,8 +33,9 @@ int main (int argc, char** argv)
     shot ("crycat_100pc_milieu", 0.55f, 3, 0.55f, 0.3f, 0.2f, false, true);
     shot ("crycat_100pc_pointe", 1.0f, 2, 0.4f, 0.2f, 0.0f, true, true);
     shot ("crycat_100pc_bypass", 0.7f, 5, 0.8f, 0.35f, 0.35f, false, false);
-    // test pédale : M-Audio EX-P qui n'envoie que 2..116 en CC 11
+    // test pédale : M-Audio EX-P qui n'envoie que 2..116 en CC 11 ; aucun CC par défaut -> CC 11 assigné comme par un MIDI Learn
     {
+        proc.ccMap[CrycatProcessor::lPedal].store (11);
         auto sendCC = [&] (int v)
         {
             AudioBuffer<float> b (2, 256); MidiBuffer m; m.addEvent (MidiMessage::controllerEvent (1, 11, v), 0);

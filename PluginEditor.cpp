@@ -973,7 +973,7 @@ private:
                           true, proc.learnTarget.load() == i);
         midi.addSeparator();
         if (proc.learnTarget.load() >= 0) midi.addItem (1200, "Cancel MIDI learn");
-        midi.addItem (1201, "Reset MIDI to defaults (pedal CC 11, others none)");
+        midi.addItem (1201, "Clear all MIDI assignments");
         midi.addSeparator();
         midi.addItem (1202, "MAN / AUTO and footswitch also learn a MIDI note", false);
         m.addSubMenu ("MIDI", midi);
@@ -986,7 +986,7 @@ private:
             proc.learnTarget.store (proc.learnTarget.load() == r - 1000 ? -1 : r - 1000);
         else if (r >= 1100 && r < 1100 + CrycatProcessor::numLearn) proc.clearLearn (r - 1100);
         else if (r == 1200) proc.learnTarget.store (-1);
-        else if (r == 1201) proc.resetMidiMap();
+        else if (r == 1201) proc.clearMidiMap();
     }
 
     void showMenu (Point<float> p)
@@ -1008,7 +1008,7 @@ private:
         {
             m.addSectionHeader ("Expression pedal (" + proc.getMidiDescription (MidiTarget::Pedal) + ")");
             m.addItem (31, "MIDI learn pedal controller");
-            m.addItem (32, "Reset to CC 11");
+            m.addItem (32, "Clear pedal MIDI assignment", proc.learnAssignText (CrycatProcessor::lPedal) != "none");
             m.addItem (35, "Calibrate (sweep heel <-> toe for 6 s)  -  " + proc.calibrationDescription());
             m.addItem (34, "Reset pedal calibration");
             m.addItem (33, "Invert pedal direction", true, param ("invert"));

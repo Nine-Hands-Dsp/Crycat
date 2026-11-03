@@ -8,7 +8,7 @@ au format **pédale double** (fenêtre aux hauteurs de Ring Think : 486 x 495 pa
 - **Q** (résonance, de large à vocal), **PURR** (saturation de l'inducteur / grain), **BOOST** (0 à +15 dB)
 - Inverseur **MAN / AUTO** : en AUTO, la wah s'enclenche dès que la pédale quitte le talon et se coupe après un repos au talon (délai réglable)
 - Footswitch ON / OFF (celui d'Echoflex) avec LED, bypass sans clic
-- Pédale d'expression MIDI : **CC 11** par défaut (MIDI learn), calibration automatique talon / pointe, inversion ;
+- Pédale d'expression MIDI : aucun CC assigné par défaut : clic droit > MIDI > Learn ; calibration automatique talon / pointe, inversion ;
   aucune saccade : rampe linéaire sur l'intervalle mesuré entre deux CC, glissé à 2 pôles, fréquence / Q / Purr / Boost lissés, CC 14 bits accepté
 - Compatible **M-Vave Chocolate Plus** : MIDI learn des footswitches (CC ou note), mode momentané ou à accrochage (127 / 0),
   Program Change 1-10 = presets usine
@@ -38,3 +38,4 @@ Tests du moteur audio : `g++ -O2 -std=c++17 tests/test_dsp.cpp -o test_dsp && ./
 - v1.4.2 : menu de taille de fenêtre : « 60 % (default) », 75 %, 100 % (plus de taille en pixels)
 - v1.5.0 : MIDI Learn au clic droit sur chaque commande (Clear MIDI, assignations sauvegardées avec le projet)
 - v1.6.0 : clic droit > Plugin size > Default size (new windows) : taille par défaut des nouvelles fenêtres au choix, comme dans Octopus
+- v1.6.1 : plus aucun CC MIDI assigné par défaut (tout passe par le MIDI Learn)
