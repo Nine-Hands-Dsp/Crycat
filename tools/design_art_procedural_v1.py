@@ -1,5 +1,5 @@
 # CRYCAT : génère tout le visuel du plugin (aucun design source : rendu procédural, lumière en haut à gauche)
-#   background.png   : fond 1020 x 928 (boîtier noir craquelé, panneau de commandes, écran, jacks Studio Wiga)
+#   background.png   : fond 1020 x 928 (boîtier noir craquelé, panneau de commandes, écran, jacks NINE HANDS | DSP)
 #   treadle_down.png : calque du plateau à plat (orteil enfoncé) ; le plugin calcule les autres positions en perspective
 #   fs_on.png / fs_off.png, toggle_l.png / toggle_r.png : sprites des commandes
 #   tools/layout.txt : coordonnées des commandes (reprises dans PluginEditor.cpp)
@@ -204,7 +204,7 @@ ambm = np.asarray(amb_l, np.float32) / 255.0
 canvas = over(canvas, np.array(INK, np.float32), ink * 0.93)
 canvas = over(canvas, np.array(AMBER, np.float32), ambm * 0.95)
 
-# logo Studio Wiga (kit)
+# logo NINE HANDS | DSP (kit)
 logo = Image.open(os.path.join(ROOT, "logo_studio_wiga_blanc.png")).convert("RGBA")
 lw = round(150 * SS); logo = logo.resize((lw, round(lw * logo.height / logo.width)), Image.LANCZOS)
 la = np.zeros((HH, WW), np.float32)
@@ -268,7 +268,7 @@ def screw(cx, cy, r=8.5, slot_a=0.5):
 
 for (x, y) in ((952, 48), (952, 880)): screw(x, y, slot_a=0.4 + x * 0.01)
 
-# ---- jacks (kit Studio Wiga) + inscriptions sur la tranche ----
+# ---- jacks (kit NINE HANDS | DSP) + inscriptions sur la tranche ----
 cimg = to_img(canvas).convert("RGBA")
 jo = Image.open(os.path.join(ROOT, "embase_jack_gauche_OUT.png")); ji = Image.open(os.path.join(ROOT, "embase_jack_droite_IN.png"))
 js = 0.36 * SS

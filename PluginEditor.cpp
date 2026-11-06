@@ -927,7 +927,7 @@ private:
         for (int i = 0; i < crycat::kNumRanges; ++i) rgs.addItem (1 + i, crycat::range (i).name, true, i == cur);
         for (int i = 0; i < CrycatProcessor::kNumFactory; ++i) fac.addItem (101 + i, String (i + 1) + "  " + CrycatProcessor::factory (i).name);
         m.addSectionHeader ("Presets");
-        m.addSubMenu ("Studio Wiga factory presets (PC 1-10)", fac);
+        m.addSubMenu ("NINE HANDS | DSP factory presets (PC 1-10)", fac);
         m.addSubMenu ("Sweep range", rgs);
         Component::SafePointer<PedalView> sp (this);
         m.showMenuAsync (PopupMenu::Options().withTargetScreenArea (localAreaToGlobal (r (kScreen).toNearestInt())), [sp] (int res)
@@ -1110,7 +1110,7 @@ CrycatEditor::~CrycatEditor() = default;
 // Anti-gel de la fenêtre (Windows) : JUCE 8 dessine par défaut avec Direct2D ; avec certains pilotes (Intel)
 // la fenêtre cesse de se rafraîchir alors que le DAW continue. Le moteur logiciel est stable partout.
 //==============================================================================
-// Anti-gel v2 (Studio Wiga) :
+// Anti-gel v2 (NINE HANDS | DSP) :
 //  1. moteur de rendu logiciel forcé sur Windows (Direct2D peut figer la fenêtre dans certains hôtes),
 //     appliqué à chaque nouvelle fenêtre hôte (peer) et revérifié toutes les secondes, jamais en boucle ;
 //  2. aucun calcul lourd dans paint() : les caches d'images (fond, commandes, positions du plateau) sont refaits

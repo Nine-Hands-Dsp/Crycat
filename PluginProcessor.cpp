@@ -334,7 +334,7 @@ void CrycatProcessor::pollCalibration()
     if (calibUntil.load() != 0 && ! isCalibrating()) calibPending = true;
 }
 
-// Anti-gel v2 (Studio Wiga) : jamais d'appel à l'hôte (setValueNotifyingHost) ni d'allocation depuis le thread audio.
+// Anti-gel v2 (NINE HANDS | DSP) : jamais d'appel à l'hôte (setValueNotifyingHost) ni d'allocation depuis le thread audio.
 // Le MIDI met la valeur en file (pendingValue / pendingSet) ; le timer du processeur (60 Hz, thread de messages)
 // la transmet au DAW et à la fenêtre.
 const char* CrycatProcessor::queuedId (int i)

@@ -1,5 +1,5 @@
 #pragma once
-// CRYCAT (Studio Wiga) : moteur audio de la wah, sans dépendance à JUCE (testable seul : tests/test_dsp.cpp)
+// CRYCAT (NINE HANDS | DSP) : moteur audio de la wah, sans dépendance à JUCE (testable seul : tests/test_dsp.cpp)
 //
 // Modèle de la Dunlop Cry Baby GCB95 : filtre passe-bande résonant (inducteur 500 mH + 0.01 µF dans la boucle
 // de contre-réaction) dont la fréquence centrale balaye de 450 Hz (talon) à 1,6 kHz (pointe), avec une partie

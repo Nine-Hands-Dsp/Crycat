@@ -1,4 +1,4 @@
-# CRYCAT (Studio Wiga)
+# CRYCAT (NINE HANDS | DSP)
 
 Plugin VST3 (Windows / macOS, + AU sur Mac) reproduisant la wah **Dunlop Cry Baby GCB95**, avec modifications,
 au format **pédale double** (fenêtre aux hauteurs de Ring Think : 486 x 495 par défaut et au minimum, puis 75 % et 100 %).

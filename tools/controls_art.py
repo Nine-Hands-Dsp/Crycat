@@ -133,7 +133,7 @@ LED_C = (772.4, 724.8)
 TG_C = (795.4, 129.7)          # axe de l'inverseur
 
 # ------------------------------------------------------------------ 1) footswitch : celui d'ECHOFLEX (photo réelle)
-# Footswitch de référence Studio Wiga : écrou hexagonal moleté + bouton en métal tourné, photographié sur la pédale Echoflex
+# Footswitch de référence NINE HANDS | DSP : écrou hexagonal moleté + bouton en métal tourné, photographié sur la pédale Echoflex
 # (design/echoflex_footswitch_source.png = extrait de background.jpg d'Echoflex, 2 px par unité, centre au milieu).
 # Mis à l'échelle de la pédale, détouré sur son hexagone, ombre portée ajoutée selon la lumière en haut à gauche.
 EF_PTS = [(1.7, -56.7), (51.7, -26.7), (51.7, 31.7), (5.0, 58.3), (-48.3, 30.0), (-49.3, -26.7)]   # hexagone (unités Echoflex)

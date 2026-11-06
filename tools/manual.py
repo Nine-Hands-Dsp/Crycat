@@ -1,4 +1,4 @@
-# CRYCAT (Studio Wiga) - notice PDF bilingue (anglais puis français), illustrée avec le rendu réel du plugin.
+# CRYCAT (NINE HANDS | DSP) - notice PDF bilingue (anglais puis français), illustrée avec le rendu réel du plugin.
 # Usage : python3 tools/manual.py <dossier des captures (tools/render)> <fichier PDF de sortie>
 #   ou   : python3 tools/manual.py tools/manual_assets <fichier PDF> (images déjà composées : crycat_annotated / heeltoe / screen / cover_cutout.png)
 import os, sys
@@ -136,13 +136,13 @@ T = {
 "en": dict(
  lang="ENGLISH", sub="Inductor wah pedal &nbsp;·&nbsp; VST3 for Windows and macOS", ver="User manual &nbsp;·&nbsp; version " + VERSION,
  intro_t="1. Introduction",
- intro=["<b>CRYCAT</b> is a Studio Wiga plugin modelled on the most famous wah pedal of all, the <b>Dunlop Cry Baby GCB95</b>. Like the original, it is a resonant band-pass filter built around a 500 mH inductor: the peak sweeps from about <b>450 Hz with the heel down to 1.6 kHz with the toe down</b>, with up to about +18 dB of resonance on the original circuit, while part of the low end always passes so the guitar keeps its body.",
+ intro=["<b>CRYCAT</b> is a NINE HANDS | DSP plugin modelled on the most famous wah pedal of all, the <b>Dunlop Cry Baby GCB95</b>. Like the original, it is a resonant band-pass filter built around a 500 mH inductor: the peak sweeps from about <b>450 Hz with the heel down to 1.6 kHz with the toe down</b>, with up to about +18 dB of resonance on the original circuit, while part of the low end always passes so the guitar keeps its body.",
         "CRYCAT keeps that voice and adds the most wanted modifications from later Cry Baby models and DIY mods: six sweep <b>RANGES</b>, an adjustable <b>Q</b>, an inductor saturation control (<b>PURR</b>), a clean <b>BOOST</b> up to +15 dB, and an <b>AUTO-ENGAGE</b> mode that turns the wah on as soon as you move the pedal, ideal with an expression pedal plugged into an M-Vave Chocolate Plus.",
         "Sound: vocal, throaty and singing; from the dark 'cocked wah' honk to the funk quack and the screaming lead."],
  inst_t="2. Installation",
- inst=[("Windows", "Download the <b>Crycat-VST3-Windows</b> artifact from the Actions tab of the GitHub repository studiowiga/crycat, unzip it and copy the <b>Crycat.vst3</b> folder into <b>C:\\Program Files\\Common Files\\VST3</b>."),
+ inst=[("Windows", "Download the <b>Crycat-VST3-Windows</b> artifact from the Actions tab of the GitHub repository Nine-Hands-Dsp/crycat, unzip it and copy the <b>Crycat.vst3</b> folder into <b>C:\\Program Files\\Common Files\\VST3</b>."),
        ("macOS", "Download <b>Crycat-VST3-macOS</b>, unzip it and copy <b>Crycat.vst3</b> into <b>~/Library/Audio/Plug-Ins/VST3</b> (or /Library/Audio/Plug-Ins/VST3 for all users). If macOS blocks it, run <b>xattr -cr ~/Library/Audio/Plug-Ins/VST3/Crycat.vst3</b> in the Terminal. The binary is universal (Apple Silicon and Intel)."),
-       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. The plugin appears as <b>Crycat (Studio Wiga)</b>. Updating from 1.1.x: first delete the old <b>CRYCAT.vst3</b> folder, then use <b>Clear cache/re-scan</b> so Reaper picks up the new name (your projects keep their settings). To control it with your MIDI pedal, the track must receive MIDI from the controller (record-arm or input monitoring, MIDI input set to your device, e.g. the M-Vave Chocolate Plus in Bluetooth or USB).")],
+       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. The plugin appears as <b>Crycat (NINE HANDS | DSP)</b>. Updating from 1.1.x: first delete the old <b>CRYCAT.vst3</b> folder, then use <b>Clear cache/re-scan</b> so Reaper picks up the new name (your projects keep their settings). To control it with your MIDI pedal, the track must receive MIDI from the controller (record-arm or input monitoring, MIDI input set to your device, e.g. the M-Vave Chocolate Plus in Bluetooth or USB).")],
  ov_t="3. Interface overview",
  ov_rows=[["#", "Control", "Role"],
    ["1", "Treadle", "The wah pedal. Heel down = 0 % (low frequency), toe down = 100 % (high frequency). Moves with the mouse (drag down to press the toe, wheel, double-click = heel / toe), with your MIDI expression pedal (once assigned with MIDI Learn) and with DAW automation."],
@@ -194,7 +194,7 @@ T = {
  pre_t="8. Presets",
  pre=["Click the screen (or use the preset menu of your DAW) to load a factory preset or choose a range. The sweep ranges:"],
  rng_hdr=["#", "Range", "Heel", "Toe", "Use"],
- fac_t="Studio Wiga factory presets",
+ fac_t="NINE HANDS | DSP factory presets",
  fac_hdr=["PC", "Preset", "Range", "Q / Purr / Boost", "Description"],
  tips_t="9. Tips",
  tips=["In Reaper place CRYCAT <b>before</b> your amp simulator (for example before Two Notes Genome), as you would put a real wah in front of the amp. With a fuzz, try both orders: wah before fuzz is smoother, fuzz before wah screams more.",
@@ -213,13 +213,13 @@ T = {
 "fr": dict(
  lang="FRANÇAIS", sub="Pédale wah à inducteur &nbsp;·&nbsp; VST3 pour Windows et macOS", ver="Notice d'utilisation &nbsp;·&nbsp; version " + VERSION,
  intro_t="1. Présentation",
- intro=["<b>CRYCAT</b> est un plugin Studio Wiga inspiré de la wah la plus célèbre, la <b>Dunlop Cry Baby GCB95</b>. Comme l'originale, c'est un filtre passe-bande résonant construit autour d'un inducteur de 500 mH : la pointe balaye d'environ <b>450 Hz talon enfoncé à 1,6 kHz pointe enfoncée</b>, avec jusqu'à environ +18 dB de résonance sur le circuit d'origine, tandis qu'une partie des graves passe toujours pour garder le corps de la guitare.",
+ intro=["<b>CRYCAT</b> est un plugin NINE HANDS | DSP inspiré de la wah la plus célèbre, la <b>Dunlop Cry Baby GCB95</b>. Comme l'originale, c'est un filtre passe-bande résonant construit autour d'un inducteur de 500 mH : la pointe balaye d'environ <b>450 Hz talon enfoncé à 1,6 kHz pointe enfoncée</b>, avec jusqu'à environ +18 dB de résonance sur le circuit d'origine, tandis qu'une partie des graves passe toujours pour garder le corps de la guitare.",
         "CRYCAT garde cette voix et ajoute les modifications les plus recherchées des Cry Baby plus récentes et des mods DIY : six <b>PLAGES</b> de balayage (RANGE), un <b>Q</b> réglable, une saturation de l'inducteur (<b>PURR</b>), un <b>BOOST</b> propre jusqu'à +15 dB et un mode <b>AUTO-ENGAGE</b> qui active la wah dès que vous bougez la pédale, idéal avec une pédale d'expression branchée sur une M-Vave Chocolate Plus.",
         "Son : vocal, guttural et chantant ; du médium nasal de la « wah bloquée » au « quack » funk et au solo hurlant."],
  inst_t="2. Installation",
- inst=[("Windows", "Téléchargez l'artefact <b>Crycat-VST3-Windows</b> dans l'onglet Actions du dépôt GitHub studiowiga/crycat, décompressez-le et copiez le dossier <b>Crycat.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3</b>."),
+ inst=[("Windows", "Téléchargez l'artefact <b>Crycat-VST3-Windows</b> dans l'onglet Actions du dépôt GitHub Nine-Hands-Dsp/crycat, décompressez-le et copiez le dossier <b>Crycat.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3</b>."),
        ("macOS", "Téléchargez <b>Crycat-VST3-macOS</b>, décompressez-le et copiez <b>Crycat.vst3</b> dans <b>~/Bibliothèque/Audio/Plug-Ins/VST3</b> (ou /Bibliothèque/Audio/Plug-Ins/VST3 pour tous les utilisateurs). Si macOS le bloque, tapez <b>xattr -cr ~/Library/Audio/Plug-Ins/VST3/Crycat.vst3</b> dans le Terminal. Le binaire est universel (Apple Silicon et Intel)."),
-       ("Reaper", "Options &gt; Préférences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Crycat (Studio Wiga)</b>. Mise à jour depuis la 1.1.x : supprimez d'abord l'ancien dossier <b>CRYCAT.vst3</b>, puis faites <b>Clear cache/re-scan</b> pour que Reaper prenne le nouveau nom (vos projets gardent leurs réglages). Pour le piloter avec votre pédale MIDI, la piste doit recevoir le MIDI du contrôleur (armement ou monitoring d'entrée, entrée MIDI réglée sur votre appareil, par exemple la M-Vave Chocolate Plus en Bluetooth ou USB).")],
+       ("Reaper", "Options &gt; Préférences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Crycat (NINE HANDS | DSP)</b>. Mise à jour depuis la 1.1.x : supprimez d'abord l'ancien dossier <b>CRYCAT.vst3</b>, puis faites <b>Clear cache/re-scan</b> pour que Reaper prenne le nouveau nom (vos projets gardent leurs réglages). Pour le piloter avec votre pédale MIDI, la piste doit recevoir le MIDI du contrôleur (armement ou monitoring d'entrée, entrée MIDI réglée sur votre appareil, par exemple la M-Vave Chocolate Plus en Bluetooth ou USB).")],
  ov_t="3. Vue d'ensemble de l'interface",
  ov_rows=[["#", "Commande", "Rôle"],
    ["1", "Plateau", "La pédale wah. Talon enfoncé = 0 % (grave), pointe enfoncée = 100 % (aigu). Se déplace à la souris (tirer vers le bas = appuyer sur la pointe, molette, double-clic = talon / pointe), avec votre pédale d'expression MIDI (une fois assignée par MIDI Learn) et avec les automations du DAW."],
@@ -271,7 +271,7 @@ T = {
  pre_t="8. Presets",
  pre=["Cliquez sur l'écran (ou utilisez le menu de presets de votre DAW) pour charger un preset usine ou choisir une plage. Les plages de balayage :"],
  rng_hdr=["#", "Plage", "Talon", "Pointe", "Usage"],
- fac_t="Presets usine Studio Wiga",
+ fac_t="Presets usine NINE HANDS | DSP",
  fac_hdr=["PC", "Preset", "Plage", "Q / Purr / Boost", "Description"],
  tips_t="9. Conseils d'utilisation",
  tips=["Dans Reaper, placez CRYCAT <b>avant</b> votre simulateur d'ampli (par exemple avant Two Notes Genome), comme une vraie wah devant l'ampli. Avec une fuzz, essayez les deux ordres : wah avant la fuzz = plus doux, fuzz avant la wah = plus hurlant.",
@@ -340,7 +340,7 @@ def section(lang):
     f.append(PageBreak())
     return f
 
-# logo Studio Wiga en foncé pour les pages blanches
+# logo NINE HANDS | DSP en foncé pour les pages blanches
 lg = Image.open(os.path.join(ROOT, "logo_studio_wiga_blanc.png")).convert("RGBA")
 la = np.array(lg); la[..., :3] = (28, 26, 30); Image.fromarray(la).save(os.path.join(TMP, "logo_dark.png"))
 
@@ -349,12 +349,12 @@ def deco(c, doc):
     c.setFillColor(DARK); c.rect(0, A4[1] - 6 * mm, A4[0], 6 * mm, stroke=0, fill=1)
     c.setFillColor(ACC); c.rect(0, A4[1] - 6.8 * mm, A4[0], 0.8 * mm, stroke=0, fill=1)
     c.setFont("Pop", 7.5); c.setFillColor(GREY)
-    c.drawString(18 * mm, 10 * mm, "Crycat (Studio Wiga) · v" + VERSION)
+    c.drawString(18 * mm, 10 * mm, "Crycat (NINE HANDS | DSP) · v" + VERSION)
     c.drawRightString(A4[0] - 18 * mm, 10 * mm, str(doc.page))
     c.restoreState()
 
 doc = BaseDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=18 * mm,
-                      title="CRYCAT - Manual / Notice v" + VERSION, author="Studio Wiga")
+                      title="CRYCAT - Manual / Notice v" + VERSION, author="NINE HANDS | DSP")
 def cover_bg(c, doc):
     c.saveState(); c.setFillColor(colors.black); c.rect(0, 0, A4[0], A4[1], stroke=0, fill=1)
     c.setFillColor(ACC); c.rect(0, A4[1] - 3 * mm, A4[0], 3 * mm, stroke=0, fill=1); c.restoreState()
