@@ -17,7 +17,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SHOTS = sys.argv[1]
 OUT = sys.argv[2]
-VERSION = "1.6.1"
+VERSION = "1.6.2"
 TMP = os.path.dirname(os.path.abspath(OUT))
 
 for n, f in (("Pop", "Poppins-Regular"), ("PopL", "Poppins-Light"), ("PopM", "Poppins-Medium"), ("PopB", "Poppins-Bold")):
@@ -197,7 +197,7 @@ T = {
  fac_t="NINE HANDS | DSP factory presets",
  fac_hdr=["PC", "Preset", "Range", "Q / Purr / Boost", "Description"],
  tips_t="9. Tips",
- tips=["In Reaper place CRYCAT <b>before</b> your amp simulator (for example before Two Notes Genome), as you would put a real wah in front of the amp. With a fuzz, try both orders: wah before fuzz is smoother, fuzz before wah screams more.",
+ tips=["In Reaper place CRYCAT <b>before</b> your amp simulator (for example before Ampire, followed by Impulse for the cab), as you would put a real wah in front of the amp. With a fuzz, try both orders: wah before fuzz is smoother, fuzz before wah screams more.",
        "7-string tuned to G or lower: use range 1 (220 Hz to 900 Hz) and a little PURR for a thick, growling low end; range 2 for rhythm parts.",
        "For a 'cocked wah' sound, park the treadle around 40-60 % (or load the Cocked Wah preset) and raise Q.",
        "If your pedal feels too jumpy, raise Pedal glide to 30 ms; for fast funk rhythms keep it at 8-15 ms.",
@@ -274,7 +274,7 @@ T = {
  fac_t="Presets usine NINE HANDS | DSP",
  fac_hdr=["PC", "Preset", "Plage", "Q / Purr / Boost", "Description"],
  tips_t="9. Conseils d'utilisation",
- tips=["Dans Reaper, placez CRYCAT <b>avant</b> votre simulateur d'ampli (par exemple avant Two Notes Genome), comme une vraie wah devant l'ampli. Avec une fuzz, essayez les deux ordres : wah avant la fuzz = plus doux, fuzz avant la wah = plus hurlant.",
+ tips=["Dans Reaper, placez CRYCAT <b>avant</b> votre simulateur d'ampli (par exemple avant Ampire, suivi d'Impulse pour le baffle), comme une vraie wah devant l'ampli. Avec une fuzz, essayez les deux ordres : wah avant la fuzz = plus doux, fuzz avant la wah = plus hurlant.",
        "7 cordes accordée en G ou plus bas : utilisez la plage 1 (220 Hz à 900 Hz) et un peu de PURR pour des graves épais et grognants ; la plage 2 pour les rythmiques.",
        "Pour un son de « wah bloquée », laissez le plateau vers 40-60 % (ou chargez le preset Cocked Wah) et montez le Q.",
        "Si la pédale vous semble trop nerveuse, montez Pedal glide à 30 ms ; pour les rythmiques funk rapides, gardez 8-15 ms.",
