@@ -21,6 +21,13 @@ au format **pédale double** (fenêtre aux hauteurs de Ring Think : 486 x 495 pa
 v1.4.1 : pédale d'expression MIDI inversée par défaut (option « Invert pedal direction » cochée à l'ouverture)
 v1.4.0 : anti-gel v2 (JUCE 8.0.15, caches refaits par le timer, chien de garde, aucun appel à l'hôte depuis le thread audio)
 
+<p align="center">
+  <a href="https://github.com/Nine-Hands-Dsp/Crycat/releases/latest/download/Crycat-VST3-Windows.zip"><img alt="Télécharger pour Windows" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-Windows-0078D6?style=for-the-badge"></a>
+  <a href="https://github.com/Nine-Hands-Dsp/Crycat/releases/latest/download/Crycat-VST3-macOS.zip"><img alt="Télécharger pour macOS" src="https://img.shields.io/badge/%E2%AC%87%20T%C3%A9l%C3%A9charger-macOS-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <br>
+  <a href="https://github.com/Nine-Hands-Dsp/Crycat/releases/latest"><img alt="Dernière version" src="https://img.shields.io/github/v/release/Nine-Hands-Dsp/Crycat?label=derni%C3%A8re%20version&color=919496"></a>
+</p>
+
 ## Visuel
 Design de l'utilisateur : `design/crycat_design_source.png`. `python3 tools/design_art.py` génère `background.png` (écran vidé,
 repères, LED et levier retirés, textes corrigés, logement sombre sous le plateau), `treadle_down.png` (plateau à plat), les sprites
