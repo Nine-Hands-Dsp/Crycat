@@ -9,15 +9,16 @@ int main (int argc, char** argv)
     proc.prepareToPlay (48000.0, 256);
     std::unique_ptr<AudioProcessorEditor> ed (proc.createEditor());
     std::printf ("taille par défaut : %d x %d\n", ed->getWidth(), ed->getHeight());
-    auto shot = [&] (const String& name, float pedal, int range, float q, float purr, float boost, bool autoM, bool active)
+    auto shot = [&] (const String& name, float pedal, int range, float q, float purr, float boost, bool autoM, bool active,
+                     int waitMs = 2000, float snapScale = 1.0f)
     {
         proc.setParamValue ("range", (float) range); proc.setParamValue ("q", q); proc.setParamValue ("purr", purr);
         proc.setParamValue ("boost", boost); proc.setParamValue ("auto", autoM ? 1.f : 0.f); proc.setParamValue ("active", active ? 1.f : 0.f);
         proc.setParamValue ("pedal", pedal);
         AudioBuffer<float> b (2, 256); MidiBuffer m;
         for (int i = 0; i < 200; ++i) { b.clear(); proc.processBlock (b, m); }
-        for (int i = 0; i < 40; ++i) MessageManager::getInstance()->runDispatchLoopUntil (50);
-        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+        for (int i = 0; i < waitMs / 50; ++i) MessageManager::getInstance()->runDispatchLoopUntil (50);
+        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, snapScale);
         File f (out + "/" + name + ".png"); f.deleteFile();
         FileOutputStream os (f); PNGImageFormat().writeImageToStream (img, os);
         std::printf ("%s (%d x %d)\n", f.getFullPathName().toRawUTF8(), img.getWidth(), img.getHeight());
@@ -33,6 +34,9 @@ int main (int argc, char** argv)
     shot ("crycat_100pc_milieu", 0.55f, 3, 0.55f, 0.3f, 0.2f, false, true);
     shot ("crycat_100pc_pointe", 1.0f, 2, 0.4f, 0.2f, 0.0f, true, true);
     shot ("crycat_100pc_bypass", 0.7f, 5, 0.8f, 0.35f, 0.35f, false, false);
+    proc.loadFactory (0);
+    shot ("crycat_100pc_presets", 1.0f, 2, 0.4f, 0.2f, 0.0f, false, true, 4500);        // barre de presets revenue (plateau à plat)
+    shot ("crycat_cover_2x", 1.0f, 2, 0.4f, 0.2f, 0.0f, false, true, 4500, 2.0f);       // couverture de la notice
     // test pédale : M-Audio EX-P qui n'envoie que 2..116 en CC 11 ; aucun CC par défaut -> CC 11 assigné comme par un MIDI Learn
     {
         proc.ccMap[CrycatProcessor::lPedal].store (11);

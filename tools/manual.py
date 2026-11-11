@@ -1,7 +1,6 @@
-# CRYCAT (NINE HANDS | DSP) - notice PDF bilingue (anglais puis français), illustrée avec le rendu réel du plugin.
+# CRYCAT (NINE HANDS | DSP) - notice PDF en francais, illustree avec le rendu reel du plugin (couverture minimale commune).
 # Usage : python3 tools/manual.py <dossier des captures (tools/render)> <fichier PDF de sortie>
-#   ou   : python3 tools/manual.py tools/manual_assets <fichier PDF> (images déjà composées : crycat_annotated / heeltoe / screen / cover_cutout.png)
-import os, sys
+import os, sys, json
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4
@@ -15,67 +14,81 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SHOTS = sys.argv[1]
-OUT = sys.argv[2]
-VERSION = "1.6.2"
-TMP = os.path.dirname(os.path.abspath(OUT))
+SHOTS, OUT = sys.argv[1], sys.argv[2]
+VERSION = "2.0.0"
+TMP = os.path.join(ROOT, "tools", "manual_assets"); os.makedirs(TMP, exist_ok=True)
+FONTS = os.path.join(ROOT, "assets", "fonts")
+for n, f in (("Pop", "Poppins-Regular"), ("PopL", "Poppins-Light"), ("PopM", "Poppins-Medium"), ("PopB", "Poppins-Bold"),
+             ("Title", "BarlowCondensed-ExtraBold")):
+    pdfmetrics.registerFont(TTFont(n, os.path.join(FONTS, f + ".ttf")))
 
-for n, f in (("Pop", "Poppins-Regular"), ("PopL", "Poppins-Light"), ("PopM", "Poppins-Medium"), ("PopB", "Poppins-Bold")):
-    pdfmetrics.registerFont(TTFont(n, os.path.join(ROOT, "fonts", f + ".ttf")))
+ACC = colors.HexColor("#D9821C"); ACC_L = colors.HexColor("#FFB040")        # ambre de l'écran et de la LED
+DARK = colors.HexColor("#1B1814"); GREY = colors.HexColor("#6B645C"); LIGHT = colors.HexColor("#F7EFE4")
 
-ACC = colors.HexColor("#D9881A"); DARK = colors.HexColor("#1C1A1E"); GREY = colors.HexColor("#6A6470"); LIGHT = colors.HexColor("#F6F0E6")
+# repères du plugin (unités = image de fond / 2 : 935 x 900), écrits par tools/v2/make_art_v2.py
+LAY = json.load(open(os.path.join(ROOT, "tools", "layout_v2.json")))
+UW, UH = LAY["units"]
 
-PREBUILT = not os.path.exists(os.path.join(SHOTS, "crycat_100pc_milieu.png"))
-if PREBUILT:   # images déjà composées (tools/manual_assets, reprises de la notice v1.5.0)
-    annotated, heeltoe, screen_img, cover = (os.path.join(SHOTS, "crycat_" + n + ".png") for n in ("annotated", "heeltoe", "screen", "cover_cutout"))
-else:
-    # ---------- capture annotée ----------
-    src = Image.open(os.path.join(SHOTS, "crycat_100pc_milieu.png")).convert("RGB")
-    k = src.height / 928.0
-    marks = [  # (numéro, x, y) dans le repère 1020 x 928 du plugin
-        (1, 270, 450), (2, 566, 297), (3, 754, 252), (4, 795, 129), (5, 562, 522), (6, 673, 521), (7, 783, 523),
-        (8, 670, 722), (9, 772, 725), (10, 893, 444), (11, 16, 444)]
-    ann = src.copy(); dr = ImageDraw.Draw(ann)
-    fnt = ImageFont.truetype(os.path.join(ROOT, "fonts", "Poppins-Bold.ttf"), 22)
-    for n, x, y in marks:
-        cx, cy, r = x * k, y * k, 17
-        dr.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255), outline=(217, 136, 26), width=4)
-        dr.text((cx, cy + 1), str(n), font=fnt, fill=(150, 80, 10), anchor="mm")
-    annotated = os.path.join(TMP, "crycat_annotated.png"); ann.save(annotated)
+def shot(name): return Image.open(os.path.join(SHOTS, name)).convert("RGB")
+src = shot("crycat_100pc_presets.png")
+k = src.height / UH
 
-    # talon / pointe côte à côte
-    a = Image.open(os.path.join(SHOTS, "crycat_100pc_talon.png")).convert("RGB")
-    b = Image.open(os.path.join(SHOTS, "crycat_100pc_pointe.png")).convert("RGB")
-    pa, pb = a.crop((0, 0, int(500 * k), a.height)), b.crop((0, 0, int(500 * k), b.height))
-    both = Image.new("RGB", (pa.width * 2 + 24, pa.height), (255, 255, 255)); both.paste(pa, (0, 0)); both.paste(pb, (pa.width + 24, 0))
-    heeltoe = os.path.join(TMP, "crycat_heeltoe.png"); both.save(heeltoe)
+# ---------- capture annotée ----------
+rx, ry, rr = LAY["range"]; sm = LAY["small"]; tgx, tgy, _ = LAY["toggle"]; fx, fy = LAY["fs"][:2]; lx, ly = LAY["led"][:2]
+g = LAY["glass"]; pl = LAY["pill"]; jy = LAY["jackY"]; bx0, bx1 = LAY["bodyX"]
+marks = [(1, 247, 330), (2, rx - 72, ry - 52), (3, (g[0] + g[2]) / 2, g[1] - 16), (4, tgx - 50, tgy),
+         (5, sm[0][0] - 50, sm[0][1] + 46), (6, sm[1][0] - 50, sm[1][1] + 46), (7, sm[2][0] + 50, sm[2][1] + 46),
+         (8, pl[0] + 14, pl[1] - 14), (9, fx - 62, fy), (10, lx + 26, ly - 22), (11, bx1 - 24, jy - 52), (12, bx0 + 24, jy - 52)]
+ann = src.copy(); dr = ImageDraw.Draw(ann)
+fnt = ImageFont.truetype(os.path.join(FONTS, "Poppins-Bold.ttf"), 20)
+for n, x, y in marks:
+    cx, cy, r = x * k, y * k, 15
+    dr.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(255, 255, 255), outline=(217, 130, 28), width=3)
+    dr.text((cx, cy + 1), str(n), font=fnt, fill=(27, 24, 20), anchor="mm")
+annotated = os.path.join(TMP, "crycat_annotated.png"); ann.save(annotated)
 
-    # gros plan de l'écran (milieu de course)
-    scr = src.crop((int(646 * k), int(189 * k), int(863 * k), int(435 * k))).resize((434, 492), Image.LANCZOS)
-    screen_img = os.path.join(TMP, "crycat_screen.png"); scr.save(screen_img)
-    # couverture : pédale détourée (silhouette design/pedal_mask.png) posée sur fond noir, léger reflet au sol et halo ambré
-    shot = Image.open(os.path.join(SHOTS, "crycat_100pc_pointe.png")).convert("RGB")      # plateau à plat : silhouette nette
-    msk = Image.open(os.path.join(ROOT, "design", "pedal_mask.png")).convert("L").resize(shot.size, Image.LANCZOS)
-    cut = Image.new("RGBA", shot.size, (0, 0, 0, 0)); cut.paste(shot, (0, 0), msk)
-    cut = cut.crop(cut.getbbox())
-    cw, ch = cut.size
-    pad = int(cw * 0.10)
-    canvas = Image.new("RGBA", (cw + 2 * pad, int(ch * 1.30) + pad), (0, 0, 0, 255))
-    yy, xx = np.mgrid[0:canvas.height, 0:canvas.width].astype(np.float64)
-    gcx, gcy = canvas.width / 2, pad + ch * 0.45
-    glow = np.exp(-(((xx - gcx) / (cw * 0.48)) ** 2 + ((yy - gcy) / (ch * 0.42)) ** 2)) * 40            # halo ambré très doux derrière la pédale
-    edge = np.clip(np.minimum.reduce([xx, canvas.width - 1 - xx, yy, canvas.height - 1 - yy]) / (pad * 0.9), 0, 1)
-    glow *= edge ** 2                                                         # retombe à zéro avant les bords : aucun cadre visible
-    halo = np.dstack([glow * 1.0, glow * 0.52, glow * 0.14, np.full_like(glow, 255)]).astype(np.uint8)
-    canvas = Image.alpha_composite(canvas, Image.fromarray(halo, "RGBA"))
-    refl = cut.transpose(Image.FLIP_TOP_BOTTOM)                              # reflet sur un sol noir brillant
-    ra = np.array(refl).astype(np.float64)
-    fade = np.clip(1 - np.arange(refl.height) / (refl.height * 0.22), 0, 1) ** 1.6 * 0.22
-    ra[..., 3] *= fade[:, None]
-    canvas.alpha_composite(Image.fromarray(ra.astype(np.uint8), "RGBA"), (pad, pad + ch + 6))
-    canvas.alpha_composite(cut, (pad, pad))
-    canvas = canvas.crop((0, 0, canvas.width, pad + int(ch * 1.20)))
-    cover = os.path.join(TMP, "crycat_cover_cutout.png"); canvas.convert("RGB").save(cover)
+def crop_u(im, box): return im.crop(tuple(int(v * k) for v in box))
+# plateau talon / pointe
+pbox = (0, 0, 470, UH)
+ht = Image.new("RGB", (int(470 * k) * 2 + 18, int(UH * k)), (255, 255, 255))
+ht.paste(crop_u(shot("crycat_100pc_talon.png"), pbox), (0, 0)); ht.paste(crop_u(shot("crycat_100pc_pointe.png"), pbox), (int(470 * k) + 18, 0))
+heeltoe = os.path.join(TMP, "crycat_heeltoe.png"); ht.save(heeltoe)
+# écran
+screen = os.path.join(TMP, "crycat_screen.png"); crop_u(shot("crycat_100pc_milieu.png"), (g[0] - 12, g[1] - 12, g[2] + 12, g[3] + 12)).save(screen)
+# pastille : barre de presets au repos, ligne d'état pendant un réglage
+bb = (pl[0] - 8, pl[1] - 8, pl[2] + 8, pl[3] + 8)
+_a = crop_u(src, bb); _b = crop_u(shot("crycat_100pc_talon.png"), bb)
+bar_img = os.path.join(TMP, "crycat_bar.png")
+_s = Image.new("RGB", (_a.width, _a.height * 2 + 12), (255, 255, 255)); _s.paste(_a, (0, 0)); _s.paste(_b, (0, _a.height + 12)); _s.save(bar_img)
+# footswitch + LED : bypass / actif
+fb = (fx - 70, fy - 70, lx + 50, fy + 70)
+on = Image.new("RGB", (int((lx + 50 - fx + 70) * k) * 2 + 16, int(140 * k)), (255, 255, 255))
+on.paste(crop_u(shot("crycat_100pc_bypass.png"), fb), (0, 0)); on.paste(crop_u(src, fb), (int((lx + 50 - fx + 70) * k) + 16, 0))
+on_img = os.path.join(TMP, "crycat_onoff.png"); on.save(on_img)
+
+# ---------- couverture : pédale détourée (boîtier + jacks, plateau à plat), reflet au sol, halo ambre très doux ----------
+c2 = shot("crycat_cover_2x.png")
+msk = Image.open(os.path.join(ROOT, "background.png")).getchannel("A").resize(c2.size, Image.LANCZOS)
+cut = Image.new("RGBA", c2.size, (0, 0, 0, 0)); cut.paste(c2, (0, 0), msk)
+cut = cut.crop(cut.getbbox())
+cw, ch = cut.size
+pad = int(cw * 0.16)
+canvas = Image.new("RGBA", (cw + 2 * pad, int(ch * 1.30) + pad), (0, 0, 0, 255))
+yy, xx = np.mgrid[0:canvas.height, 0:canvas.width].astype(np.float64)
+gcx, gcy = canvas.width / 2, pad + ch * 0.45
+glow = np.exp(-(((xx - gcx) / (cw * 0.62)) ** 2 + ((yy - gcy) / (ch * 0.48)) ** 2)) * 30
+edge = np.clip(np.minimum.reduce([xx, canvas.width - 1 - xx, yy, canvas.height - 1 - yy]) / (pad * 0.9), 0, 1)
+glow *= edge ** 2
+halo = np.dstack([glow * 0.95, glow * 0.55, glow * 0.15, np.full_like(glow, 255)]).astype(np.uint8)
+canvas = Image.alpha_composite(canvas, Image.fromarray(halo, "RGBA"))
+refl = cut.transpose(Image.FLIP_TOP_BOTTOM)
+ra = np.array(refl).astype(np.float64)
+fade = np.clip(1 - np.arange(refl.height) / (refl.height * 0.22), 0, 1) ** 1.6 * 0.22
+ra[..., 3] *= fade[:, None]
+canvas.alpha_composite(Image.fromarray(ra.astype(np.uint8), "RGBA"), (pad, pad + ch + 6))
+canvas.alpha_composite(cut, (pad, pad))
+canvas = canvas.crop((0, 0, canvas.width, pad + int(ch * 1.20)))
+cover = os.path.join(TMP, "crycat_cover_cutout.png"); canvas.convert("RGB").save(cover)
 
 def img(path, width):
     im = Image.open(path); h = width * im.height / im.width
@@ -86,263 +99,162 @@ st = {
     "h1": ParagraphStyle("h1", fontName="PopB", fontSize=20, leading=24, textColor=ACC, spaceAfter=8, spaceBefore=4, keepWithNext=1),
     "h2": ParagraphStyle("h2", fontName="PopM", fontSize=13, leading=17, textColor=DARK, spaceAfter=4, spaceBefore=10, keepWithNext=1),
     "p": ParagraphStyle("p", fontName="Pop", fontSize=9.6, leading=14, textColor=DARK, spaceAfter=5),
+    "tip": ParagraphStyle("tip", fontName="Pop", fontSize=9.0, leading=12.4, textColor=DARK, spaceAfter=3),
     "small": ParagraphStyle("small", fontName="Pop", fontSize=8.2, leading=11.5, textColor=GREY),
     "cell": ParagraphStyle("cell", fontName="Pop", fontSize=8.4, leading=11, textColor=DARK),
     "cellb": ParagraphStyle("cellb", fontName="PopM", fontSize=8.4, leading=11, textColor=DARK),
-    "cover": ParagraphStyle("cover", fontName="PopL", fontSize=40, leading=46, textColor=colors.white, alignment=TA_CENTER),
-    "coversub": ParagraphStyle("coversub", fontName="Pop", fontSize=12, leading=16, textColor=colors.HexColor("#BDB6AE"), alignment=TA_CENTER),
-    "coverlang": ParagraphStyle("coverlang", fontName="PopM", fontSize=8.5, leading=11, textColor=colors.HexColor("#F0A43A")),
+    "cells": ParagraphStyle("cells", fontName="Pop", fontSize=7.8, leading=10, textColor=DARK),
+    "cellbs": ParagraphStyle("cellbs", fontName="PopM", fontSize=7.8, leading=10, textColor=DARK),
 }
 def P(t, s="p"): return Paragraph(t, st[s])
-def bullets(items): return [P("&bull;&nbsp;&nbsp;" + i) for i in items]
-def table(rows, widths, header=True):
-    data = [[P(c, "cellb" if (header and r == 0) else "cell") for c in row] for r, row in enumerate(rows)]
+def bullets(items, s="p"): return [P("&bull;&nbsp;&nbsp;" + i, s) for i in items]
+def table(rows, widths, header=True, small=False):
+    data = [[P(c, ("cellbs" if small else "cellb") if (header and r == 0) else ("cells" if small else "cell")) for c in row] for r, row in enumerate(rows)]
     t = Table(data, colWidths=widths, repeatRows=1 if header else 0)
-    style = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#E2D8CA")),
-             ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]
+    style = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("LINEBELOW", (0, 0), (-1, -1), 0.3, colors.HexColor("#E6DAC9")),
+             ("TOPPADDING", (0, 0), (-1, -1), 2 if small else 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 2 if small else 3)]
     if header: style += [("BACKGROUND", (0, 0), (-1, 0), LIGHT), ("LINEBELOW", (0, 0), (-1, 0), 0.8, ACC)]
     t.setStyle(TableStyle(style)); return t
 
 # ---------- données (identiques au code livré : CrycatDSP.h et PluginProcessor.cpp) ----------
 RANGES = [("1", "Low / 7-string", 220, 900), ("2", "Dark", 320, 1250), ("3", "GCB95 Classic", 450, 1600),
           ("4", "Vintage (V847)", 480, 2100), ("5", "Bright", 600, 2600), ("6", "Shriek", 750, 3200)]
-RANGE_DESC = {
-    "en": ["Lowest sweep: bass, baritone and 7-string guitars tuned to G or lower.", "Darker, rounder sweep, jazz and smooth rhythm parts.",
-           "The original Cry Baby GCB95 sweep (default).", "Wider, more open sweep in the spirit of the early Vox V847.",
-           "Brighter toe for funk and clean parts.", "Highest sweep: screaming leads, cuts through dense mixes."],
-    "fr": ["Balayage le plus grave : basse, baryton et 7 cordes accordée en G ou plus bas.", "Balayage plus sombre et rond, jazz et rythmiques douces.",
-           "Le balayage d'origine de la Cry Baby GCB95 (par défaut).", "Balayage plus large et ouvert, dans l'esprit de la Vox V847 des débuts.",
-           "Pointe plus brillante pour le funk et les sons clairs.", "Balayage le plus aigu : solos hurlants, passe à travers un mix chargé."]}
+RANGE_DESC = ["Balayage le plus grave : basse, baryton et 7 cordes accordée en G ou plus bas.", "Balayage plus sombre et rond, jazz et rythmiques douces.",
+              "Le balayage d'origine de la Cry Baby GCB95 (par défaut).", "Balayage plus large et ouvert, dans l'esprit de la Vox V847 des débuts.",
+              "Pointe plus brillante pour le funk et les sons clairs.", "Balayage le plus aigu : solos hurlants, passe à travers un mix chargé."]
 FACTORY = [  # nom, plage, Q, purr, boost, auto, pédale
     ("GCB95 Classic", 3, 40, 20, 0, False, None), ("Voodoo Fuzz Wah (V847)", 4, 50, 30, 20, False, None),
     ("Funk Quack", 5, 65, 10, 15, False, None), ("Shriek Lead", 6, 78, 35, 35, False, None),
     ("Cocked Wah - Mid Honk", 3, 55, 25, 20, False, 55), ("Seven-String Growl", 1, 45, 55, 20, False, None),
     ("Bass Wah", 1, 30, 20, 10, False, None), ("Talking Cat (vocal)", 4, 92, 15, 10, False, None),
     ("Smooth Dark Sweep", 2, 20, 0, 5, False, None), ("Auto-Engage Lead", 3, 50, 25, 25, True, None)]
-FACT_DESC = {
-    "en": ["The reference: the stock Cry Baby voice.", "Open vintage sweep, a bit of grit and boost: made for a fuzz in front.",
-           "Bright, tight quack for funk rhythm.", "High, very resonant sweep with boost for solos.",
-           "Fixed half-way 'cocked wah' (treadle at 55 %): nasal mid honk.", "Low range and plenty of Purr: thick growl for low-tuned guitars.",
-           "Low range, moderate Q: bass-friendly wah.", "Very high Q for a vocal, talking effect.", "Soft, dark, almost filter-like sweep.",
-           "Classic voice with AUTO-ENGAGE: just move the pedal to turn the wah on."],
-    "fr": ["La référence : la voix de la Cry Baby d'origine.", "Balayage vintage ouvert, un peu de grain et de boost : fait pour une fuzz placée devant.",
-           "« Quack » brillant et serré pour la rythmique funk.", "Balayage aigu, très résonant, avec boost pour les solos.",
-           "Wah « bloquée » à mi-course (plateau à 55 %) : médium nasal.", "Plage grave et beaucoup de Purr : grognement épais pour guitares accordées bas.",
-           "Plage grave, Q modéré : wah adaptée à la basse.", "Q très élevé pour un effet vocal, qui « parle ».", "Balayage doux et sombre, presque comme un filtre.",
-           "Voix classique avec AUTO-ENGAGE : il suffit de bouger la pédale pour activer la wah."]}
+FACT_DESC = ["La référence : la voix de la Cry Baby d'origine.", "Balayage vintage ouvert, un peu de grain et de boost : fait pour une fuzz placée devant.",
+             "« Quack » brillant et serré pour la rythmique funk.", "Balayage aigu, très résonant, avec boost pour les solos.",
+             "Wah « bloquée » à mi-course (plateau à 55 %) : médium nasal.", "Plage grave et beaucoup de Purr : grognement épais pour guitares accordées bas.",
+             "Plage grave, Q modéré : wah adaptée à la basse.", "Q très élevé pour un effet vocal, qui « parle ».", "Balayage doux et sombre, presque comme un filtre.",
+             "Voix classique avec AUTO-ENGAGE : il suffit de bouger la pédale pour activer la wah."]
 
-# ---------- textes ----------
-T = {
-"en": dict(
- lang="ENGLISH", sub="Inductor wah pedal &nbsp;·&nbsp; VST3 for Windows and macOS", ver="User manual &nbsp;·&nbsp; version " + VERSION,
- intro_t="1. Introduction",
- intro=["<b>CRYCAT</b> is a NINE HANDS | DSP plugin modelled on the most famous wah pedal of all, the <b>Dunlop Cry Baby GCB95</b>. Like the original, it is a resonant band-pass filter built around a 500 mH inductor: the peak sweeps from about <b>450 Hz with the heel down to 1.6 kHz with the toe down</b>, with up to about +18 dB of resonance on the original circuit, while part of the low end always passes so the guitar keeps its body.",
-        "CRYCAT keeps that voice and adds the most wanted modifications from later Cry Baby models and DIY mods: six sweep <b>RANGES</b>, an adjustable <b>Q</b>, an inductor saturation control (<b>PURR</b>), a clean <b>BOOST</b> up to +15 dB, and an <b>AUTO-ENGAGE</b> mode that turns the wah on as soon as you move the pedal, ideal with an expression pedal plugged into an M-Vave Chocolate Plus.",
-        "Sound: vocal, throaty and singing; from the dark 'cocked wah' honk to the funk quack and the screaming lead."],
- inst_t="2. Installation",
- inst=[("Windows", "Download the <b>Crycat-VST3-Windows</b> artifact from the Actions tab of the GitHub repository Nine-Hands-Dsp/crycat, unzip it and copy the <b>Crycat.vst3</b> folder into <b>C:\\Program Files\\Common Files\\VST3</b>."),
-       ("macOS", "Download <b>Crycat-VST3-macOS</b>, unzip it and copy <b>Crycat.vst3</b> into <b>~/Library/Audio/Plug-Ins/VST3</b> (or /Library/Audio/Plug-Ins/VST3 for all users). If macOS blocks it, run <b>xattr -cr ~/Library/Audio/Plug-Ins/VST3/Crycat.vst3</b> in the Terminal. The binary is universal (Apple Silicon and Intel)."),
-       ("Reaper", "Options &gt; Preferences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. The plugin appears as <b>Crycat (NINE HANDS | DSP)</b>. Updating from 1.1.x: first delete the old <b>CRYCAT.vst3</b> folder, then use <b>Clear cache/re-scan</b> so Reaper picks up the new name (your projects keep their settings). To control it with your MIDI pedal, the track must receive MIDI from the controller (record-arm or input monitoring, MIDI input set to your device, e.g. the M-Vave Chocolate Plus in Bluetooth or USB).")],
- ov_t="3. Interface overview",
- ov_rows=[["#", "Control", "Role"],
-   ["1", "Treadle", "The wah pedal. Heel down = 0 % (low frequency), toe down = 100 % (high frequency). Moves with the mouse (drag down to press the toe, wheel, double-click = heel / toe), with your MIDI expression pedal (once assigned with MIDI Learn) and with DAW automation."],
-   ["2", "RANGE selector", "6 sweep ranges. Drag up / down, mouse wheel, or click a number directly. The selected number lights up in amber."],
-   ["3", "Screen", "Range, state, live frequency response curve, centre frequency, Q and boost, treadle travel and the status line. Click it to open the preset menu."],
-   ["4", "MAN · AUTO switch", "MAN: the footswitch alone turns the wah on / off. AUTO: automatic engage when the treadle leaves the heel."],
-   ["5", "Q", "Resonance of the peak, from wide and smooth (Q 2) to very vocal (Q 14). Default 40 % (Q about 4.4, the original Cry Baby)."],
-   ["6", "PURR", "Inductor saturation and input grit (default 20 %)."],
-   ["7", "BOOST", "Output gain, 0 to +15 dB (default 0 dB)."],
-   ["8", "Footswitch", "Effect ON / OFF, click-free crossfade. Same footswitch and behaviour as Echoflex: it switches as soon as you press it and the cap darkens while held."],
-   ["9", "LED", "Amber 3 mm LED in a chrome bezel: fades in when the wah is active (and lights the panel around it); glows faintly in AUTO while waiting for the pedal to move."],
-   ["10", "IN", "Input jack (right side)."],
-   ["11", "OUT", "Output jack (left side)."]],
- ctl_t="4. Controls in detail",
- ctl=[("Treadle", "The peak frequency follows the treadle on a logarithmic scale, so the sweep feels even across the whole travel, like the audio-taper pot of a real wah. The heel keeps more low end (lows about 12 dB under the peak), the toe thins them out (about 24 dB under the peak) for the classic 'wah' contrast. The resonance tightens slightly towards the toe, as on the original. On screen the treadle really tilts around its hinge: as the toe rises its face turns away from the light, its edges appear, a reflection slides over the chrome and its shadow grows longer and softer."),
-      ("RANGE", "Sets where the sweep starts and ends. Range 3 is the GCB95 (450 Hz to 1.6 kHz). Lower ranges suit bass and low-tuned guitars; higher ranges cut through and scream."),
-      ("Q", "On a real Cry Baby the Q is set by a single resistor (R7); raising it gives the more vocal tone that many players mod for. Low Q: smooth, filter-like. High Q: talking, nasal, very expressive."),
-      ("PURR", "Models the saturation of the inductor and of the input stage: at 0 % the filter is perfectly clean, higher values add a slightly asymmetric grit, compress the resonance on hard picking and give a throatier, 'meowing' voice. Very nice before a clean or crunch amp."),
-      ("BOOST", "Like the booster of the Cry Baby 535Q: compensates the volume drop of the wah or pushes the amp for solos. The boost only applies when the wah is on."),
-      ("MAN / AUTO", "<b>AUTO-ENGAGE</b>: the wah turns on as soon as the treadle leaves the heel (above 3.5 %) and turns off after it has rested on the heel for a short time (400 ms by default, adjustable: right-click &gt; <b>Auto-engage</b>). The footswitch stays the master switch: if it is OFF, the wah stays off.")],
- scr_t="The screen",
- scr="The screen shows the <b>range</b> and the <b>state</b> (ON, BYPASS, AUTO = waiting, AUTO ON = engaged by the pedal), the <b>frequency response</b> from 80 Hz to 5 kHz (the shaded band is the sweep of the selected range, the dot is the current peak), the <b>centre frequency</b>, the effective <b>Q</b> and the <b>boost</b>, the treadle position bars and the <b>status line</b> with the live values in % (pedal, Q, PURR, BOOST) or the instructions during a MIDI learn / calibration.",
- heeltoe_cap="Treadle heel down (left, toe raised) and toe down (right): the drawing follows the MIDI pedal and automation in real time.",
- fs_t="5. Footswitch, LED, AUTO mode and expression pedal",
- fs=["<b>Footswitch</b>: turns the effect ON / OFF with a click-free crossfade. Like Echoflex, it switches as soon as you press it (mouse button down) and its cap darkens while you hold it.",
-     "<b>LED</b>: the amber LED fades in when the wah is active and really lights the panel around it; in AUTO it glows faintly while CRYCAT waits for the pedal to move.",
-     "<b>MAN / AUTO</b>: in MAN the footswitch alone turns the wah on and off. In AUTO the wah engages as soon as the treadle leaves the heel and switches off after a rest on the heel (right-click &gt; <b>Switch off after resting on the heel</b>: 150, 300, 400, 800 or 1500 ms). The footswitch stays the master switch.",
-     "<b>Expression pedal</b>: no CC is assigned by default: right-click the treadle &gt; <b>MIDI Learn: Wah pedal</b> (or <b>MIDI learn pedal controller</b>) and move your pedal. <b>The pedal direction is inverted by default</b> (right-click &gt; <b>Invert pedal direction</b> is ticked when the plugin opens): untick it if the treadle moves the wrong way with your pedal. Other items of the right-click menu: <b>MIDI learn pedal controller</b>, <b>Clear pedal MIDI assignment</b>, <b>Calibrate</b> (sweep the pedal fully heel &lt;-&gt; toe for 6 seconds: CRYCAT records its real minimum and maximum), <b>Reset pedal calibration</b> and <b>Pedal glide</b> (0, 8, 15, 30, 60 or 120 ms; 15 ms by default).",
-     "<b>Smooth movement</b>: CRYCAT measures the time between two messages from your pedal and glides linearly to each new position over that time, then smooths the result with a two-stage filter; frequency, Q, Purr and Boost are also smoothed, so the 128 steps of a 7-bit pedal (even over Bluetooth) and DAW automation sound continuous. 14-bit pedals (CC n + CC n+32) are supported.",
-     "<b>Pedal range</b>: many expression pedals never send exactly 0 and 127 (an M-Audio EX-P on an M-Vave Chocolate Plus often sends about 2 to 116). CRYCAT learns the real range automatically the first time you press the pedal fully down and up, and adds a small dead zone at both ends: heel is exactly 0 %, toe exactly 100 %. The right-click menu shows the range in use (e.g. <i>auto 2 - 116</i>); a manual calibration, if made, takes priority.",
-     "Tip: with AUTO-ENGAGE you can play without touching a switch: just rock the expression pedal, CRYCAT turns itself off when you return to the heel."],
- midi_t="6. MIDI",
- midi=["<b>MIDI Learn on every control</b>: right-click a control (the treadle, the RANGE selector or one of its numbers, Q, PURR, BOOST, the MAN / AUTO switch or the footswitch). The top of the menu shows <b>MIDI Learn: &lt;Name&gt; (CC n / none)</b> with the current assignment, <b>Clear MIDI: &lt;Name&gt;</b> and, while a learn is waiting, <b>Cancel MIDI learn</b>. Choose MIDI Learn, then move a pedal, a knob or press a footswitch of your controller: the status line of the screen shows <b>MIDI LEARN: move a control for &lt;Name&gt;</b>, then <b>&lt;Name&gt; = CC n</b> for 2 seconds.",
-       "Right-click outside the controls (for example on the screen or the enclosure) to open the usual menu with a <b>MIDI</b> submenu: <b>Learn</b> for each of the 7 controls (with its current assignment, or <b>none</b>), <b>Cancel MIDI learn</b> and <b>Clear all MIDI assignments</b>, which removes every assignment. No CC is assigned by default, not even for the treadle: every control is assigned with MIDI Learn. Choosing the pending item again also cancels the learn.",
-       "A CC number can only drive one control: learning a CC that is already used removes it from the other control. Learn accepts CC 0 to 119; the MAN / AUTO switch and the footswitch can also learn a MIDI <b>note</b>. CRYCAT listens on all MIDI channels. <b>Assignments are saved with the project</b> (and with DAW presets). A project made with an earlier version that still had only the former factory assignment (pedal on CC 11, nothing else) opens with no assignment: learn the treadle again. A project in which you had changed an assignment or learnt a note keeps its assignments as saved (including the pedal, MAN / AUTO and footswitch assignments of versions before 1.5)."],
- midi_hdr=["Control", "Type"],
- midi_rows=[["Wah pedal (treadle)", "Continuous 0-127 (heel to toe), with calibration, auto range, inversion (on by default), glide and 14-bit CC"],
-            ["Range selector", "6-position selector: the 0-127 travel is split into 6 equal zones (1 to 6)"],
-            ["Q", "Continuous 0-127 = 0-100 %"], ["Purr", "Continuous 0-127 = 0-100 %"], ["Boost", "Continuous 0-127 = 0 to +15 dB"],
-            ["MAN / AUTO switch", "Footswitch (CC or note): momentary (each press toggles) or latching (127 = AUTO, 0 = MAN)"],
-            ["ON / OFF footswitch", "Footswitch (CC or note): momentary (each press toggles) or latching (127 = ON, 0 = OFF)"]],
- midi2=["<b>Switch messages</b>: right-click the footswitch or the MAN / AUTO switch to choose how your controller sends its switches: <b>Momentary (each press toggles)</b>, for switches that send 127 on press and 0 on release, or <b>Latching (127 = ON, 0 = OFF)</b>, for switches set to 'toggle' that alternate 127 / 0. A CC at 64 or more counts as pressed.",
-        "<b>Program Change</b>: PC 1 to 10 load the 10 factory presets (right-click &gt; <b>Respond to MIDI Program Change (PC 1-10)</b>, on by default).",
-        "<b>M-Vave Chocolate Plus</b>: plug your expression pedal into its EXP input, then MIDI-learn the treadle (right-click the treadle &gt; MIDI Learn: Wah pedal, then move the pedal). Learn one Chocolate footswitch on the CRYCAT footswitch and optionally another one on MAN / AUTO; its Program Change mode loads the presets directly.",
-        "Every control is also a DAW parameter (Wah Pedal, Range, Q, Purr, Boost, Effect On, Auto-Engage, Pedal Glide, Auto-Engage Release, Pedal Calibration Heel / Toe, MIDI Pedal Invert, Respond to MIDI Program Change, MIDI Switches Latching) and can be automated in Reaper."],
- win_t="7. Window",
- win=["CRYCAT uses the double pedal format, like Wharry, with the same window heights as Ring Think. Right-click &gt; <b>Plugin size</b>: <b>60 %</b>, <b>75 %</b>, <b>100 %</b> sets the size of this window, and <b>(default)</b> is shown next to the default size you chose. The size chosen for an instance is saved with the project and takes priority when the project is reopened. At the bottom of the same menu, <b>Default size (new windows)</b> chooses the size at which every new CRYCAT window opens when its instance has no size of its own saved in the project (a setting shared by all instances and saved on the computer); the open window also takes that size at once. The window can never be made smaller than 60 %; you can also drag the bottom-right corner (proportions are kept).",
-       "The <b>status line</b> at the bottom of the screen shows the live values in % (PEDAL, Q, PURR, BOOST), or the instructions during a calibration or a MIDI learn."],
- pre_t="8. Presets",
- pre=["Click the screen (or use the preset menu of your DAW) to load a factory preset or choose a range. The sweep ranges:"],
- rng_hdr=["#", "Range", "Heel", "Toe", "Use"],
- fac_t="NINE HANDS | DSP factory presets",
- fac_hdr=["PC", "Preset", "Range", "Q / Purr / Boost", "Description"],
- tips_t="9. Tips",
- tips=["In Reaper place CRYCAT <b>before</b> your amp simulator (for example before Ampire, followed by Impulse for the cab), as you would put a real wah in front of the amp. With a fuzz, try both orders: wah before fuzz is smoother, fuzz before wah screams more.",
-       "7-string tuned to G or lower: use range 1 (220 Hz to 900 Hz) and a little PURR for a thick, growling low end; range 2 for rhythm parts.",
-       "For a 'cocked wah' sound, park the treadle around 40-60 % (or load the Cocked Wah preset) and raise Q.",
-       "If your pedal feels too jumpy, raise Pedal glide to 30 ms; for fast funk rhythms keep it at 8-15 ms.",
-       "Learn the Q or BOOST on a second expression pedal or a knob of your controller to play with the resonance live."],
- tech_t="10. Specifications",
- tech=[["Format", "VST3 (Windows 64-bit, macOS universal), AU also built on macOS"], ["Version", VERSION],
-       ["Channels", "Mono or stereo in, mono or stereo out (each channel filtered)"],
-       ["Latency", "0 samples"], ["Sweep", "220 Hz to 3.2 kHz depending on the range (GCB95: 450 Hz to 1.6 kHz)"],
-       ["Q", "2 to 14"], ["Boost", "0 to +15 dB"],
-       ["MIDI", "MIDI Learn on all 7 controls (saved with the project), no CC assigned by default (pedal inverted by default), 14-bit CC, notes for the switches, Program Change 1-10, all channels"],
-       ["Window", "60 % / 75 % / 100 % (Plugin size, saved with the project), default size of new windows to choose, never smaller than 60 %; anti-freeze v2 on Windows (display caches rebuilt by a timer, watchdog that restarts drawing, no call to the host from the audio thread)"],
-       ["CPU", "less than 1 % of one core at 48 kHz"]]),
-"fr": dict(
- lang="FRANÇAIS", sub="Pédale wah à inducteur &nbsp;·&nbsp; VST3 pour Windows et macOS", ver="Notice d'utilisation &nbsp;·&nbsp; version " + VERSION,
+t = dict(
+ lang="FRANÇAIS", sub="Wah vocale",
  intro_t="1. Présentation",
- intro=["<b>CRYCAT</b> est un plugin NINE HANDS | DSP inspiré de la wah la plus célèbre, la <b>Dunlop Cry Baby GCB95</b>. Comme l'originale, c'est un filtre passe-bande résonant construit autour d'un inducteur de 500 mH : la pointe balaye d'environ <b>450 Hz talon enfoncé à 1,6 kHz pointe enfoncée</b>, avec jusqu'à environ +18 dB de résonance sur le circuit d'origine, tandis qu'une partie des graves passe toujours pour garder le corps de la guitare.",
-        "CRYCAT garde cette voix et ajoute les modifications les plus recherchées des Cry Baby plus récentes et des mods DIY : six <b>PLAGES</b> de balayage (RANGE), un <b>Q</b> réglable, une saturation de l'inducteur (<b>PURR</b>), un <b>BOOST</b> propre jusqu'à +15 dB et un mode <b>AUTO-ENGAGE</b> qui active la wah dès que vous bougez la pédale, idéal avec une pédale d'expression branchée sur une M-Vave Chocolate Plus.",
-        "Son : vocal, guttural et chantant ; du médium nasal de la « wah bloquée » au « quack » funk et au solo hurlant."],
+ intro=["<b>Crycat</b> est un plugin NINE HANDS | DSP inspiré de la wah la plus célèbre, la <b>Dunlop Cry Baby GCB95</b>. Comme l'originale, c'est un filtre passe-bande résonant construit autour d'un inducteur de 500 mH : la pointe balaye d'environ <b>450 Hz talon enfoncé à 1,6 kHz pointe enfoncée</b>, avec jusqu'à environ +18 dB de résonance, tandis qu'une partie des graves passe toujours pour garder le corps de la guitare.",
+        "Crycat garde cette voix et ajoute les modifications les plus recherchées des Cry Baby plus récentes et des mods DIY : six <b>plages</b> de balayage (RANGE), un <b>Q</b> réglable, une saturation de l'inducteur (<b>PURR</b>), un <b>BOOST</b> propre jusqu'à +15 dB et un mode <b>AUTO-ENGAGE</b> qui active la wah dès que vous bougez la pédale, idéal avec une pédale d'expression branchée sur une M-Vave Chocolate Plus.",
+        "Son : vocal, guttural et chantant ; du médium nasal de la « wah bloquée » au « quack » funk et au solo hurlant.",
+        "Le visuel est un design original NINE HANDS | DSP : boîtier noir à grain, plateau chromé à caoutchouc rainuré, potards en aluminium tourné, écran ambre encastré. Crycat n'est pas affilié à Dunlop ; « Cry Baby » et « GCB95 » ne servent qu'à décrire le circuit reproduit."],
  inst_t="2. Installation",
- inst=[("Windows", "Téléchargez l'artefact <b>Crycat-VST3-Windows</b> dans l'onglet Actions du dépôt GitHub Nine-Hands-Dsp/crycat, décompressez-le et copiez le dossier <b>Crycat.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3</b>."),
-       ("macOS", "Téléchargez <b>Crycat-VST3-macOS</b>, décompressez-le et copiez <b>Crycat.vst3</b> dans <b>~/Bibliothèque/Audio/Plug-Ins/VST3</b> (ou /Bibliothèque/Audio/Plug-Ins/VST3 pour tous les utilisateurs). Si macOS le bloque, tapez <b>xattr -cr ~/Library/Audio/Plug-Ins/VST3/Crycat.vst3</b> dans le Terminal. Le binaire est universel (Apple Silicon et Intel)."),
-       ("Reaper", "Options &gt; Préférences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Crycat (NINE HANDS | DSP)</b>. Mise à jour depuis la 1.1.x : supprimez d'abord l'ancien dossier <b>CRYCAT.vst3</b>, puis faites <b>Clear cache/re-scan</b> pour que Reaper prenne le nouveau nom (vos projets gardent leurs réglages). Pour le piloter avec votre pédale MIDI, la piste doit recevoir le MIDI du contrôleur (armement ou monitoring d'entrée, entrée MIDI réglée sur votre appareil, par exemple la M-Vave Chocolate Plus en Bluetooth ou USB).")],
+ inst=[("Windows", "Cliquez sur le bouton <b>Télécharger Windows</b> de la page GitHub Nine-Hands-Dsp/Crycat (il donne toujours la dernière version), décompressez <b>Crycat-VST3-Windows.zip</b> et copiez le dossier <b>Crycat.vst3</b> dans <b>C:\\Program Files\\Common Files\\VST3</b>."),
+       ("macOS", "Cliquez sur <b>Télécharger macOS</b>, décompressez <b>Crycat-VST3-macOS.zip</b> et copiez <b>Crycat.vst3</b> dans <b>~/Bibliothèque/Audio/Plug-Ins/VST3</b>. Si macOS le bloque, tapez <b>xattr -cr ~/Library/Audio/Plug-Ins/VST3/Crycat.vst3</b> dans le Terminal. Le binaire est universel (Apple Silicon et Intel)."),
+       ("Reaper", "Options &gt; Préférences &gt; Plug-ins &gt; VST &gt; <b>Re-scan</b>. Le plugin apparaît sous le nom <b>Crycat (NINE HANDS | DSP)</b> ; vos projets faits avec une version précédente gardent leurs réglages. Pour le piloter avec votre pédale MIDI, la piste doit recevoir le MIDI du contrôleur (armement ou monitoring d'entrée, entrée MIDI réglée sur votre appareil, par exemple la M-Vave Chocolate Plus en Bluetooth ou USB).")],
  ov_t="3. Vue d'ensemble de l'interface",
  ov_rows=[["#", "Commande", "Rôle"],
-   ["1", "Plateau", "La pédale wah. Talon enfoncé = 0 % (grave), pointe enfoncée = 100 % (aigu). Se déplace à la souris (tirer vers le bas = appuyer sur la pointe, molette, double-clic = talon / pointe), avec votre pédale d'expression MIDI (une fois assignée par MIDI Learn) et avec les automations du DAW."],
-   ["2", "Sélecteur RANGE", "6 plages de balayage. Glisser vers le haut / le bas, molette, ou clic direct sur un numéro. Le numéro choisi s'allume en ambre."],
-   ["3", "Écran", "Plage, état, courbe de réponse en direct, fréquence centrale, Q et boost, course du plateau et ligne d'état. Un clic ouvre le menu des presets."],
-   ["4", "Inverseur MAN · AUTO", "MAN : seul le footswitch active / coupe la wah. AUTO : enclenchement automatique quand le plateau quitte le talon."],
-   ["5", "Q", "Résonance de la pointe, de large et douce (Q 2) à très vocale (Q 14). 40 % par défaut (Q d'environ 4,4, la Cry Baby d'origine)."],
-   ["6", "PURR", "Saturation de l'inducteur et grain de l'entrée (20 % par défaut)."],
-   ["7", "BOOST", "Gain de sortie, de 0 à +15 dB (0 dB par défaut)."],
-   ["8", "Footswitch", "Effet ON / OFF, fondu sans clic. Même footswitch et même fonctionnement qu'Echoflex : il bascule dès l'appui et le bouton s'assombrit tant qu'on appuie."],
-   ["9", "LED", "LED ambre 3 mm à bague chromée : s'allume en fondu quand la wah est active (et éclaire la façade autour d'elle) ; faible lueur en AUTO tant que la pédale n'a pas bougé."],
-   ["10", "IN", "Jack d'entrée (côté droit)."],
-   ["11", "OUT", "Jack de sortie (côté gauche)."]],
+   ["1", "Plateau", "La pédale wah : talon = 0 % (grave), pointe = 100 % (aigu). Souris (tirer vers le bas = appuyer sur la pointe, Maj = réglage fin), molette, double-clic = talon / pointe, pédale MIDI, automation."],
+   ["2", "RANGE", "6 plages de balayage. Glisser, molette ou clic direct sur un numéro ; le numéro choisi s'allume en ambre."],
+   ["3", "Écran", "Plage, état, courbe de réponse en direct, fréquence centrale, Q, boost et course du plateau. Un clic ouvre le menu des presets."],
+   ["4", "MAN · AUTO", "MAN : seul le footswitch active la wah. AUTO : elle s'enclenche quand le plateau quitte le talon."],
+   ["5", "Q", "Résonance, de large (Q 2) à très vocale (Q 14)."],
+   ["6", "PURR", "Saturation de l'inducteur et grain."],
+   ["7", "BOOST", "Gain de sortie, 0 à +15 dB."],
+   ["8", "Presets / état", "Barre de presets (flèches, clic = menu) ; ligne d'état à la place tant qu'un réglage bouge."],
+   ["9", "Footswitch", "Effet ON / OFF, sans clic."],
+   ["10", "LED", "Ambre : wah active ; faible lueur en AUTO en attente."],
+   ["11", "IN", "Jack d'entrée (côté droit)."],
+   ["12", "OUT", "Jack de sortie (côté gauche)."]],
+ on_cap="Bypass, puis wah active : la LED ambre s'allume et éclaire la façade et l'écrou du footswitch.",
  ctl_t="4. Les commandes en détail",
- ctl=[("Plateau", "La fréquence de la pointe suit le plateau sur une échelle logarithmique : le balayage paraît régulier sur toute la course, comme avec le potentiomètre logarithmique d'une vraie wah. Le talon garde davantage de graves (environ 12 dB sous le niveau de la pointe), la pointe les amincit (environ 24 dB sous la pointe) pour le contraste « wah » classique. La résonance se resserre un peu vers la pointe, comme sur l'originale. À l'écran, le plateau bascule vraiment autour de sa charnière : quand la pointe monte, sa face s'écarte de la lumière, ses tranches apparaissent, un reflet glisse sur le chrome et son ombre s'allonge en s'adoucissant."),
-      ("RANGE", "Fixe le début et la fin du balayage. La plage 3 est celle de la GCB95 (450 Hz à 1,6 kHz). Les plages graves conviennent à la basse et aux guitares accordées bas ; les plages aiguës percent et hurlent."),
-      ("Q", "Sur une vraie Cry Baby, le Q dépend d'une seule résistance (R7) ; l'augmenter donne le son plus vocal que beaucoup de guitaristes obtiennent par modification. Q faible : doux, façon filtre. Q élevé : parlant, nasal, très expressif."),
-      ("PURR", "Reproduit la saturation de l'inducteur et de l'étage d'entrée : à 0 % le filtre est parfaitement propre, au-delà il ajoute un grain légèrement asymétrique, comprime la résonance sur les attaques fortes et donne une voix plus gutturale, qui « miaule ». Très beau devant un ampli clair ou crunch."),
-      ("BOOST", "Comme le booster de la Cry Baby 535Q : compense la perte de volume de la wah ou pousse l'ampli pour les solos. Le boost ne s'applique que lorsque la wah est active."),
-      ("MAN / AUTO", "<b>AUTO-ENGAGE</b> : la wah s'active dès que le plateau quitte le talon (au-delà de 3,5 %) et se coupe après un court repos au talon (400 ms par défaut, réglable : clic droit &gt; <b>Auto-engage</b>). Le footswitch reste l'interrupteur principal : s'il est sur OFF, la wah reste coupée.")],
- scr_t="L'écran",
- scr="L'écran affiche la <b>plage</b> et l'<b>état</b> (ON, BYPASS, AUTO = en attente, AUTO ON = enclenchée par la pédale), la <b>courbe de réponse</b> de 80 Hz à 5 kHz (la bande ombrée correspond au balayage de la plage choisie, le point à la pointe actuelle), la <b>fréquence centrale</b>, le <b>Q</b> effectif et le <b>boost</b>, les barres de position du plateau et la <b>ligne d'état</b> avec les valeurs en direct en % (pédale, Q, PURR, BOOST) ou les consignes pendant un MIDI learn / une calibration.",
- heeltoe_cap="Plateau talon enfoncé (à gauche, pointe levée) et pointe enfoncée (à droite) : le dessin suit la pédale MIDI et les automations en temps réel.",
+ ctl=[("Plateau", "La fréquence de la pointe suit le plateau sur une échelle logarithmique : le balayage paraît régulier sur toute la course, comme avec le potentiomètre logarithmique d'une vraie wah. Le talon garde davantage de graves, la pointe les amincit, pour le contraste « wah » classique ; la résonance se resserre un peu vers la pointe, comme sur l'originale. À l'écran, le plateau bascule vraiment autour de sa charnière : en se levant, la pointe s'élargit en perspective, ses tranches apparaissent, un reflet glisse sur le chrome et son ombre portée s'étend vers le bas à droite."),
+      ("RANGE", "Fixe le début et la fin du balayage (tableau des plages au chapitre 8). La plage 3 est celle de la GCB95 (450 Hz à 1,6 kHz). Les plages graves conviennent à la basse et aux guitares accordées bas ; les plages aiguës percent et hurlent."),
+      ("Q", "Sur une vraie Cry Baby, le Q dépend d'une seule résistance ; l'augmenter donne le son plus vocal que beaucoup de guitaristes obtiennent par modification. Q faible : doux, façon filtre. Q élevé : parlant, nasal, très expressif. 40 % par défaut (Q d'environ 4,4, la Cry Baby d'origine)."),
+      ("PURR", "Reproduit la saturation de l'inducteur et de l'étage d'entrée : à 0 % le filtre est parfaitement propre, au-delà il ajoute un grain légèrement asymétrique, comprime la résonance sur les attaques fortes et donne une voix plus gutturale, qui « miaule ». 20 % par défaut."),
+      ("BOOST", "Comme le booster de la Cry Baby 535Q : compense la perte de volume de la wah ou pousse l'ampli pour les solos. Il ne s'applique que lorsque la wah est active."),
+      ("MAN / AUTO", "<b>AUTO-ENGAGE</b> : la wah s'active dès que le plateau quitte le talon (au-delà de 3,5 %) et se coupe après un court repos au talon (400 ms par défaut, réglable au clic droit). Le footswitch reste l'interrupteur principal : s'il est sur OFF, la wah reste coupée. L'inverseur passe brièvement par sa position centrale pendant la bascule.")],
+ scr="<b>L'écran</b> affiche la plage et l'état (ON, BYPASS, AUTO = en attente, AUTO ON = enclenchée par la pédale), la courbe de réponse de 80 Hz à 5 kHz (la bande ombrée correspond au balayage de la plage choisie, le point à la pointe actuelle), la fréquence centrale, le Q effectif, le boost et les barres de position du plateau.",
+ heeltoe_cap="Plateau talon enfoncé (pointe levée, à gauche) et pointe enfoncée (à droite) : le dessin suit la pédale MIDI et les automations en temps réel.",
  fs_t="5. Footswitch, LED, mode AUTO et pédale d'expression",
- fs=["<b>Footswitch</b> : active / coupe l'effet avec un fondu sans clic. Comme sur Echoflex, il bascule dès l'appui (bouton de la souris enfoncé) et son bouton s'assombrit tant qu'on appuie.",
-     "<b>LED</b> : la LED ambre s'allume en fondu quand la wah est active et éclaire réellement la façade autour d'elle ; en AUTO, elle luit faiblement tant que CRYCAT attend que la pédale bouge.",
-     "<b>MAN / AUTO</b> : en MAN, seul le footswitch active et coupe la wah. En AUTO, la wah s'enclenche dès que le plateau quitte le talon et se coupe après un repos au talon (clic droit &gt; <b>Switch off after resting on the heel</b> : 150, 300, 400, 800 ou 1500 ms). Le footswitch reste l'interrupteur principal.",
-     "<b>Pédale d'expression</b> : aucun CC n'est assigné par défaut : clic droit sur le plateau &gt; <b>MIDI Learn: Wah pedal</b> (ou <b>MIDI learn pedal controller</b>), puis bougez votre pédale. <b>Le sens de la pédale est inversé par défaut</b> (clic droit &gt; <b>Invert pedal direction</b> est coché à l'ouverture du plugin) : décochez-le si le plateau part dans le mauvais sens avec votre pédale. Autres choix du menu clic droit : <b>MIDI learn pedal controller</b>, <b>Clear pedal MIDI assignment</b>, <b>Calibrate</b> (balayez la pédale entièrement talon &lt;-&gt; pointe pendant 6 secondes : CRYCAT enregistre son minimum et son maximum réels), <b>Reset pedal calibration</b> et <b>Pedal glide</b> (0, 8, 15, 30, 60 ou 120 ms ; 15 ms par défaut).",
-     "<b>Mouvement sans saccade</b> : CRYCAT mesure le temps entre deux messages de votre pédale et glisse linéairement vers chaque nouvelle position pendant ce temps, puis lisse le résultat avec un filtre à deux étages ; la fréquence, le Q, le Purr et le Boost sont aussi lissés : les 128 pas d'une pédale 7 bits (même en Bluetooth) et les automations du DAW sonnent continus. Les pédales 14 bits (CC n + CC n+32) sont prises en charge.",
-     "<b>Course de la pédale</b> : beaucoup de pédales d'expression n'envoient jamais exactement 0 et 127 (une M-Audio EX-P sur une M-Vave Chocolate Plus envoie souvent environ 2 à 116). CRYCAT apprend tout seul la course réelle dès que vous enfoncez puis relevez la pédale à fond, et ajoute une petite zone morte aux deux butées : talon = exactement 0 %, pointe = exactement 100 %. Le menu clic droit affiche la course utilisée (par ex. <i>auto 2 - 116</i>) ; une calibration manuelle, si elle a été faite, reste prioritaire.",
-     "Astuce : avec AUTO-ENGAGE, plus besoin de footswitch : basculez simplement la pédale d'expression, CRYCAT se coupe tout seul quand vous revenez au talon."],
+ fs=["<b>Footswitch</b> : active / coupe l'effet avec un fondu sans clic. Il bascule dès l'appui et son bouton s'assombrit tant qu'on appuie.",
+     "<b>LED</b> : la LED ambre s'allume en fondu quand la wah est active ; la façade autour d'elle et le flanc de l'écrou du footswitch reçoivent sa lumière (intensité du halo : clic droit &gt; <b>Glow</b>). En AUTO, elle luit faiblement tant que Crycat attend que la pédale bouge.",
+     "<b>MAN / AUTO</b> : en AUTO, la wah se coupe après un repos au talon : clic droit &gt; <b>Switch off after resting on the heel</b> (150, 300, 400, 800 ou 1500 ms).",
+     "<b>Pédale d'expression</b> : aucun CC n'est assigné par défaut : clic droit sur le plateau &gt; <b>MIDI Learn: Wah pedal</b>, puis bougez votre pédale. <b>Le sens de la pédale est inversé par défaut</b> (clic droit &gt; <b>Invert pedal direction</b> coché) : décochez-le si le plateau part dans le mauvais sens. Autres choix : <b>Calibrate</b> (balayez la pédale entièrement pendant 6 secondes), <b>Reset pedal calibration</b> et <b>Pedal glide</b> (0, 8, 15, 30, 60 ou 120 ms ; 15 ms par défaut).",
+     "<b>Mouvement sans saccade</b> : Crycat mesure le temps entre deux messages de votre pédale et glisse vers chaque nouvelle position pendant ce temps, puis lisse le résultat ; fréquence, Q, Purr et Boost sont aussi lissés. Les pédales 14 bits (CC n + CC n+32) sont prises en charge.",
+     "<b>Course de la pédale</b> : beaucoup de pédales n'envoient jamais exactement 0 et 127 (une M-Audio EX-P sur une M-Vave Chocolate Plus envoie souvent 2 à 116). Crycat apprend tout seul la course réelle : talon = exactement 0 %, pointe = exactement 100 %. Le menu clic droit affiche la course utilisée (par ex. <i>auto 2 - 116</i>) ; une calibration manuelle reste prioritaire."],
  midi_t="6. MIDI",
- midi=["<b>MIDI Learn sur toutes les commandes</b> : faites un clic droit sur une commande (le plateau, le sélecteur RANGE ou l'un de ses numéros, Q, PURR, BOOST, l'inverseur MAN / AUTO ou le footswitch). Le haut du menu affiche <b>MIDI Learn: &lt;Nom&gt; (CC n / none)</b> avec l'assignation actuelle, <b>Clear MIDI: &lt;Nom&gt;</b> et, tant qu'un apprentissage est en attente, <b>Cancel MIDI learn</b>. Choisissez MIDI Learn puis bougez une pédale, un bouton ou appuyez sur un footswitch de votre contrôleur : la ligne d'état de l'écran affiche <b>MIDI LEARN: move a control for &lt;Nom&gt;</b>, puis <b>&lt;Nom&gt; = CC n</b> pendant 2 secondes.",
-       "Un clic droit hors des commandes (par exemple sur l'écran ou le boîtier) ouvre le menu habituel avec un sous-menu <b>MIDI</b> : <b>Learn</b> pour chacune des 7 commandes (avec son assignation actuelle, ou <b>none</b>), <b>Cancel MIDI learn</b> et <b>Clear all MIDI assignments</b>, qui efface toutes les assignations. Aucun CC n'est assigné par défaut, pas même pour le plateau : chaque commande s'assigne avec le MIDI Learn. Choisir de nouveau la commande en attente annule aussi l'apprentissage.",
-       "Un numéro de CC ne pilote qu'une seule commande : apprendre un CC déjà utilisé le retire de l'autre commande. L'apprentissage accepte les CC 0 à 119 ; l'inverseur MAN / AUTO et le footswitch peuvent aussi apprendre une <b>note</b> MIDI. CRYCAT écoute tous les canaux MIDI. <b>Les assignations sont sauvegardées avec le projet</b> (et avec les presets du DAW). Un projet fait avec une version précédente qui n'avait encore que l'ancienne assignation d'usine (pédale sur le CC 11, rien d'autre) s'ouvre sans aucune assignation : réapprenez le plateau. Un projet où vous aviez changé une assignation ou appris une note garde ses assignations telles qu'enregistrées (y compris les assignations de pédale, de MAN / AUTO et de footswitch des versions antérieures à la 1.5)."],
+ midi=["<b>MIDI Learn sur toutes les commandes</b> : clic droit sur une commande (plateau, RANGE ou l'un de ses numéros, Q, PURR, BOOST, MAN / AUTO, footswitch). Le menu affiche <b>MIDI Learn: &lt;Nom&gt; (CC n / none)</b>, <b>Clear MIDI: &lt;Nom&gt;</b> et, tant qu'un apprentissage est en attente, <b>Cancel MIDI learn</b>. Bougez ensuite une commande de votre contrôleur : la ligne d'état affiche <b>MIDI LEARN: move a control for &lt;Nom&gt;</b>, puis <b>&lt;Nom&gt; = CC n</b> pendant 2 secondes.",
+       "Un clic droit hors des commandes ouvre le menu général avec un sous-menu <b>MIDI</b> : <b>Learn</b> pour chacune des 7 commandes, <b>Cancel MIDI learn</b> et <b>Clear all MIDI assignments</b>. Un numéro de CC ne pilote qu'une seule commande ; MAN / AUTO et le footswitch peuvent aussi apprendre une <b>note</b>. Crycat écoute tous les canaux MIDI ; les assignations sont sauvegardées avec le projet."],
  midi_hdr=["Commande", "Type"],
- midi_rows=[["Wah pedal (plateau)", "Continu 0-127 (talon à pointe), avec calibration, course automatique, inversion (active par défaut), glissé et CC 14 bits"],
-            ["Range selector", "Sélecteur à 6 positions : la course 0-127 est découpée en 6 zones égales (1 à 6)"],
-            ["Q", "Continu 0-127 = 0-100 %"], ["Purr", "Continu 0-127 = 0-100 %"], ["Boost", "Continu 0-127 = 0 à +15 dB"],
-            ["MAN / AUTO switch", "Footswitch (CC ou note) : momentané (chaque appui bascule) ou à accrochage (127 = AUTO, 0 = MAN)"],
-            ["ON / OFF footswitch", "Footswitch (CC ou note) : momentané (chaque appui bascule) ou à accrochage (127 = ON, 0 = OFF)"]],
- midi2=["<b>Messages des commutateurs</b> : clic droit sur le footswitch ou l'inverseur MAN / AUTO pour choisir comment votre contrôleur envoie ses commutateurs : <b>Momentary (each press toggles)</b>, pour les footswitches qui envoient 127 à l'appui et 0 au relâchement, ou <b>Latching (127 = ON, 0 = OFF)</b>, pour les footswitches réglés en « toggle » qui alternent 127 / 0. Un CC à 64 ou plus compte comme un appui.",
+ midi_rows=[["Wah pedal (plateau)", "Continu 0-127 (talon à pointe), calibration, course automatique, inversion (active par défaut), glissé, CC 14 bits"],
+            ["Range selector", "6 positions : la course 0-127 est découpée en 6 zones égales"],
+            ["Q / Purr", "Continu 0-127 = 0-100 %"], ["Boost", "Continu 0-127 = 0 à +15 dB"],
+            ["MAN / AUTO switch", "CC ou note : momentané (chaque appui bascule) ou à accrochage (127 = AUTO, 0 = MAN)"],
+            ["ON / OFF footswitch", "CC ou note : momentané ou à accrochage (127 = ON, 0 = OFF)"]],
+ midi2=["<b>Messages des commutateurs</b> : clic droit sur le footswitch ou l'inverseur : <b>Momentary (each press toggles)</b> ou <b>Latching (127 = ON, 0 = OFF)</b>.",
         "<b>Program Change</b> : PC 1 à 10 chargent les 10 presets usine (clic droit &gt; <b>Respond to MIDI Program Change (PC 1-10)</b>, actif par défaut).",
-        "<b>M-Vave Chocolate Plus</b> : branchez votre pédale d'expression sur son entrée EXP, puis faites un MIDI Learn du plateau (clic droit sur le plateau &gt; MIDI Learn: Wah pedal, puis bougez la pédale). Apprenez un footswitch de la Chocolate sur le footswitch de CRYCAT et éventuellement un autre sur MAN / AUTO ; son mode Program Change charge directement les presets.",
-        "Chaque commande est aussi un paramètre du DAW (Wah Pedal, Range, Q, Purr, Boost, Effect On, Auto-Engage, Pedal Glide, Auto-Engage Release, Pedal Calibration Heel / Toe, MIDI Pedal Invert, Respond to MIDI Program Change, MIDI Switches Latching), automatisable dans Reaper."],
+        "<b>M-Vave Chocolate Plus</b> : branchez votre pédale d'expression sur son entrée EXP, faites un MIDI Learn du plateau, puis apprenez un footswitch de la Chocolate sur le footswitch de Crycat et éventuellement un autre sur MAN / AUTO ; son mode Program Change charge directement les presets.",
+        "Chaque commande est aussi un paramètre du DAW, automatisable dans Reaper."],
  win_t="7. Fenêtre",
- win=["CRYCAT utilise le format pédale double, comme Wharry, avec les mêmes hauteurs de fenêtre que Ring Think. Clic droit &gt; <b>Plugin size</b> : <b>60 %</b>, <b>75 %</b>, <b>100 %</b> règle la taille de cette fenêtre, et <b>(default)</b> est indiqué à côté de la taille par défaut choisie. La taille choisie pour une instance est enregistrée avec le projet et reste prioritaire quand le projet est rouvert. En bas du même menu, <b>Default size (new windows)</b> choisit la taille d'ouverture de toutes les nouvelles fenêtres de CRYCAT dont l'instance n'a pas de taille enregistrée dans le projet (réglage commun à toutes les instances, enregistré sur l'ordinateur) ; la fenêtre ouverte prend aussitôt cette taille. La fenêtre ne peut jamais être réduite sous 60 % ; on peut aussi tirer le coin en bas à droite (les proportions sont conservées).",
-       "La <b>ligne d'état</b>, en bas de l'écran, affiche les valeurs en direct en % (PEDAL, Q, PURR, BOOST), ou les consignes pendant une calibration ou un MIDI Learn."],
- pre_t="8. Presets",
- pre=["Cliquez sur l'écran (ou utilisez le menu de presets de votre DAW) pour charger un preset usine ou choisir une plage. Les plages de balayage :"],
+ win=["Crycat utilise le format pédale double de NINE HANDS | DSP : la fenêtre montre la pédale plein cadre (visuel de 1870 × 1800 px), textes, graduations et logo Crycat dessinés en vectoriel, nets à toutes les tailles. Elle s'ouvre à <b>60 %</b> et ne peut jamais être réduite en dessous. Clic droit &gt; <b>Plugin size</b> : <b>60 %</b>, <b>75 %</b> ou <b>100 %</b>, « (default) » indiquant la taille par défaut ; <b>Default size (new windows)</b> choisit la taille d'ouverture de toutes les nouvelles fenêtres de Crycat (réglage commun à toutes les instances). La taille choisie pour une instance est enregistrée avec le projet. Vous pouvez aussi tirer le coin en bas à droite (proportions conservées).",
+      "La <b>barre de presets</b> et la <b>ligne d'état</b> partagent la même pastille. Au repos, elle affiche le preset avec ses flèches (précédent / suivant ; clic sur le nom = menu des presets ; molette). Dès qu'un réglage bouge (souris, molette, pédale, automation, MIDI), la ligne d'état prend sa place en fondu et affiche les valeurs en direct (PEDAL, Q, PURR, BOOST en %) ou les messages du MIDI Learn et de la calibration ; 2,5 s après le dernier mouvement, la barre de presets revient. Un clic sur la pastille la fait revenir tout de suite.",
+      "Les menus clic droit s'ouvrent à l'endroit du clic. Clic droit &gt; <b>Glow</b> règle l'intensité du halo de la LED (25, 50, 75 ou 100 %, réglage commun à toutes les fenêtres)."],
+ bar_cap="Barre de presets au repos, ligne d'état pendant un réglage.",
+ pre_t="8. Presets et plages",
+ pre=["Utilisez les flèches de la barre de presets, cliquez sur son nom ou sur l'écran, ou passez par le menu de presets de votre DAW. Le même menu permet de choisir directement une plage (<b>Sweep range</b>)."],
  rng_hdr=["#", "Plage", "Talon", "Pointe", "Usage"],
- fac_t="Presets usine NINE HANDS | DSP",
- fac_hdr=["PC", "Preset", "Plage", "Q / Purr / Boost", "Description"],
+ fac_hdr=["PC", "Preset", "Plage", "Q / Purr / Boost (%)", "Description"],
  tips_t="9. Conseils d'utilisation",
- tips=["Dans Reaper, placez CRYCAT <b>avant</b> votre simulateur d'ampli (par exemple avant Ampire, suivi d'Impulse pour le baffle), comme une vraie wah devant l'ampli. Avec une fuzz, essayez les deux ordres : wah avant la fuzz = plus doux, fuzz avant la wah = plus hurlant.",
-       "7 cordes accordée en G ou plus bas : utilisez la plage 1 (220 Hz à 900 Hz) et un peu de PURR pour des graves épais et grognants ; la plage 2 pour les rythmiques.",
-       "Pour un son de « wah bloquée », laissez le plateau vers 40-60 % (ou chargez le preset Cocked Wah) et montez le Q.",
-       "Si la pédale vous semble trop nerveuse, montez Pedal glide à 30 ms ; pour les rythmiques funk rapides, gardez 8-15 ms.",
-       "Apprenez le Q ou le BOOST sur une deuxième pédale d'expression ou un bouton de votre contrôleur pour jouer avec la résonance en direct."],
+ tips=["Dans Reaper, placez Crycat <b>avant</b> votre simulateur d'ampli (par exemple avant Ampire, suivi d'Impulse pour le baffle), comme une vraie wah devant l'ampli. Avec une fuzz, essayez les deux ordres : wah avant la fuzz = plus doux, fuzz avant la wah = plus hurlant.",
+       "7 cordes accordée en G ou plus bas : plage 1 (220 Hz à 900 Hz) et un peu de PURR pour des graves épais et grognants ; plage 2 pour les rythmiques.",
+       "Pour une « wah bloquée », laissez le plateau vers 40-60 % (ou chargez <i>Cocked Wah</i>) et montez le Q.",
+       "Si la pédale vous semble nerveuse, montez Pedal glide à 30 ms ; pour le funk rapide, gardez 8-15 ms.",
+       "Apprenez le Q ou le BOOST sur une deuxième pédale d'expression pour jouer avec la résonance en direct."],
  tech_t="10. Caractéristiques techniques",
- tech=[["Format", "VST3 (Windows 64 bits, macOS universel), AU également compilé sur macOS"], ["Version", VERSION],
-       ["Canaux", "Entrée mono ou stéréo, sortie mono ou stéréo (chaque canal est filtré)"],
+ tech=[["Format", "VST3 (Windows 64 bits, macOS universel), AU également sur macOS"],
+       ["Canaux", "Entrée et sortie mono ou stéréo (chaque canal est filtré)"],
        ["Latence", "0 échantillon"], ["Balayage", "de 220 Hz à 3,2 kHz selon la plage (GCB95 : 450 Hz à 1,6 kHz)"],
-       ["Q", "de 2 à 14"], ["Boost", "de 0 à +15 dB"],
-       ["MIDI", "MIDI Learn sur les 7 commandes (sauvegardé avec le projet), aucun CC assigné par défaut (pédale inversée par défaut), CC 14 bits, notes pour les commutateurs, Program Change 1-10, tous canaux"],
-       ["Fenêtre", "60 % / 75 % / 100 % (Plugin size, enregistrée avec le projet), taille par défaut des nouvelles fenêtres au choix, jamais sous 60 % ; anti-gel v2 sous Windows (caches d'affichage refaits par un timer, chien de garde qui relance le dessin, aucun appel à l'hôte depuis le thread audio)"],
-       ["Processeur", "moins de 1 % d'un cœur à 48 kHz"]]),
-}
+       ["Q / Boost", "Q de 2 à 14 ; boost de 0 à +15 dB"],
+       ["MIDI", "MIDI Learn sur les 7 commandes (sauvegardé avec le projet), aucun CC assigné par défaut, pédale inversée par défaut, CC 14 bits, notes pour les commutateurs, Program Change 1-10, tous canaux"],
+       ["Fenêtre", "60 % / 75 % / 100 %, taille par défaut des nouvelles fenêtres au choix, jamais sous 60 %, Glow 25 à 100 % ; anti-gel v2 sous Windows"],
+       ["Processeur", "moins de 1 % d'un cœur à 48 kHz pour le son"]])
 
 W = A4[0] - 36 * mm
-def section(lang):
-    t = T[lang]; f = []
-    # couverture (page noire, pédale détourée, comme Wharry)
-    f.append(NextPageTemplate("p"))
-    f.append(Spacer(1, 4 * mm))
-    f.append(P(t["lang"], "coverlang"))
-    f.append(Spacer(1, 3 * mm))
-    f.append(img(cover, W))
-    f.append(Spacer(1, 2 * mm))
-    f.append(P("C R Y C A T", "cover"))
-    f.append(P(t["sub"], "coversub"))
-    f.append(Spacer(1, 2 * mm))
-    f.append(P(t["ver"], "coversub"))
-    f.append(Spacer(1, 7 * mm))
-    f.append(img(os.path.join(ROOT, "logo_studio_wiga_blanc.png"), 52 * mm))
-    f.append(PageBreak())
+LOGO_PNG = os.path.join(TMP, "nine_hands_logo_blanc.png")
+
+def story():
+    f = [NextPageTemplate("p"), Spacer(1, 1), PageBreak()]
     f.append(P(t["intro_t"], "h1")); f += [P(x) for x in t["intro"]]
     f.append(P(t["inst_t"], "h1"))
     for h, x in t["inst"]: f.append(P(h, "h2")); f.append(P(x))
     f.append(PageBreak())
-    f.append(P(t["ov_t"], "h1")); f.append(img(annotated, W * 0.70)); f.append(Spacer(1, 3 * mm))
-    f.append(table(t["ov_rows"], [10 * mm, 36 * mm, W - 46 * mm]))
+    f.append(P(t["ov_t"], "h1"))
+    f.append(img(annotated, 130 * mm))
+    f.append(Spacer(1, 3 * mm))
+    f.append(table(t["ov_rows"], [9 * mm, 30 * mm, W - 39 * mm], small=True))
+    f.append(Spacer(1, 3 * mm))
+    f.append(KeepTogether([img(on_img, 80 * mm), P(t["on_cap"], "small")]))
     f.append(PageBreak())
     f.append(P(t["ctl_t"], "h1"))
     for h, x in t["ctl"]: f.append(P(h, "h2")); f.append(P(x))
-    f.append(KeepTogether([Spacer(1, 3 * mm), img(heeltoe, W * 0.56), P(t["heeltoe_cap"], "small")]))
-    scr_tbl = Table([[img(screen_img, 46 * mm), P(t["scr"])]], colWidths=[52 * mm, W - 52 * mm])
-    scr_tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (0, 0), 0)]))
-    f.append(KeepTogether([P(t["scr_t"], "h2"), scr_tbl]))
+    sc = Table([[[P(t["scr"])], [img(screen, 52 * mm)]]], colWidths=[W - 56 * mm, 56 * mm])
+    sc.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (0, 0), 0)]))
+    f.append(Spacer(1, 2 * mm)); f.append(sc)
+    f.append(KeepTogether([img(heeltoe, 110 * mm), P(t["heeltoe_cap"], "small")]))
     f.append(P(t["fs_t"], "h1")); f += bullets(t["fs"])
     f.append(P(t["midi_t"], "h1")); f += [P(x) for x in t["midi"]]
-    f.append(Spacer(1, 2 * mm)); f.append(table([t["midi_hdr"]] + t["midi_rows"], [42 * mm, W - 42 * mm])); f.append(Spacer(1, 3 * mm))
-    f += bullets(t["midi2"])
-    f.append(P(t["win_t"], "h1")); f += [P(x) for x in t["win"]]
-    f.append(PageBreak())
+    f.append(KeepTogether([table([t["midi_hdr"]] + t["midi_rows"], [40 * mm, W - 40 * mm])]))
+    f.append(Spacer(1, 2 * mm)); f += bullets(t["midi2"])
+    f.append(P(t["win_t"], "h1")); f.append(P(t["win"][0]))
+    wt = Table([[[P(t["win"][1]), P(t["win"][2])], [img(bar_img, 66 * mm), P(t["bar_cap"], "small")]]], colWidths=[W - 70 * mm, 70 * mm])
+    wt.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (0, 0), 0)]))
+    f.append(wt)
     f.append(P(t["pre_t"], "h1")); f += [P(x) for x in t["pre"]]
-    rows = [t["rng_hdr"]] + [[n, nm, f"{lo} Hz", f"{hi / 1000:.2f} kHz".replace(".", "," if lang == "fr" else "."), RANGE_DESC[lang][i]] for i, (n, nm, lo, hi) in enumerate(RANGES)]
-    f.append(table(rows, [8 * mm, 32 * mm, 18 * mm, 20 * mm, W - 78 * mm]))
-    f.append(P(t["fac_t"], "h2"))
+    rows = [t["rng_hdr"]] + [[n, "<b>" + nm + "</b>", f"{lo} Hz", f"{hi / 1000:.2f} kHz".replace(".", ","), RANGE_DESC[i]] for i, (n, nm, lo, hi) in enumerate(RANGES)]
+    f.append(table(rows, [7 * mm, 30 * mm, 16 * mm, 18 * mm, W - 71 * mm], small=True))
+    f.append(Spacer(1, 3 * mm))
     rows = [t["fac_hdr"]]
-    for i, (n, rg, q, pu, bo, au, ped) in enumerate(FACTORY):
-        extra = (" · AUTO" if au else "") + ((" · " + ("pedal" if lang == "en" else "pédale") + f" {ped} %") if ped is not None else "")
-        rows.append([str(i + 1), n, str(rg), f"{q} % · {pu} % · {bo} %" + extra, FACT_DESC[lang][i]])
-    f.append(table(rows, [9 * mm, 38 * mm, 15 * mm, 36 * mm, W - 98 * mm]))
-    f.append(PageBreak())                                  # conseils + caractéristiques ensemble (pas de tableau seul sur une page)
-    f.append(P(t["tips_t"], "h1")); f += bullets(t["tips"])
-    f.append(KeepTogether([P(t["tech_t"], "h1"), table(t["tech"], [30 * mm, W - 30 * mm], header=False)]))
-    f.append(PageBreak())
+    for i, (n, rg, q, pu, bo, au, pd) in enumerate(FACTORY):
+        extra = (" ; AUTO" if au else "") + (f" ; plateau {pd} %" if pd is not None else "")
+        rows.append([str(i + 1), "<b>" + n + "</b>", str(rg), f"{q} / {pu} / {bo}{extra}", FACT_DESC[i]])
+    f.append(table(rows, [8 * mm, 36 * mm, 11 * mm, 30 * mm, W - 85 * mm], small=True))
+    f.append(KeepTogether([P(t["tips_t"], "h1")] + bullets(t["tips"], "tip") +
+                          [P(t["tech_t"], "h1"), table(t["tech"], [28 * mm, W - 28 * mm], header=False, small=True)]))
     return f
-
-# logo NINE HANDS | DSP en foncé pour les pages blanches
-lg = Image.open(os.path.join(ROOT, "logo_studio_wiga_blanc.png")).convert("RGBA")
-la = np.array(lg); la[..., :3] = (28, 26, 30); Image.fromarray(la).save(os.path.join(TMP, "logo_dark.png"))
 
 def deco(c, doc):
     c.saveState()
@@ -354,14 +266,35 @@ def deco(c, doc):
     c.restoreState()
 
 doc = BaseDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=18 * mm,
-                      title="CRYCAT - Manual / Notice v" + VERSION, author="NINE HANDS | DSP")
+                      title="Crycat - Notice v" + VERSION, author="NINE HANDS | DSP")
+# ---- Couverture « minimale » (modèle 6, validé nov. 2026) : gabarit fixe commun à toutes les notices ----
+COVER_NAME = "CRYCAT"
+PEDAL_H, PEDAL_MAXW, PEDAL_TOP = 82 * mm, 115 * mm, 84 * mm
+LANG_TOP = 18 * mm
+NAME_TOP, NAME_PT = 194 * mm, 30
+SUB_TOP, SUB_PT = 208 * mm, 10
+LOGO_W, LOGO_BOTTOM = 38 * mm, 22 * mm
+BAND_H = 3 * mm
 def cover_bg(c, doc):
     c.saveState(); c.setFillColor(colors.black); c.rect(0, 0, A4[0], A4[1], stroke=0, fill=1)
-    c.setFillColor(ACC); c.rect(0, A4[1] - 3 * mm, A4[0], 3 * mm, stroke=0, fill=1); c.restoreState()
+    c.setFillColor(ACC); c.rect(0, 0, A4[0], BAND_H, stroke=0, fill=1)
+    def line(text, top, font, size, cs, col):
+        w = pdfmetrics.stringWidth(text, font, size) + cs * (len(text) - 1)
+        tt = c.beginText((A4[0] - w) / 2, A4[1] - top - size * 0.8); tt.setFont(font, size); tt.setCharSpace(cs)
+        tt.setFillColor(col); tt.textOut(text); c.drawText(tt)
+    line(t["lang"], LANG_TOP, "PopM", 8.5, 0, ACC_L)
+    ci = Image.open(cover); iw, ih = ci.size
+    cw_ = iw / 1.32; ch_ = (ih - int(cw_ * 0.16)) / 1.2; pad_ = int(cw_ * 0.16)     # géométrie de crycat_cover_cutout.png
+    kk = min(PEDAL_H / ch_, PEDAL_MAXW / cw_)
+    dw, dh = iw * kk, ih * kk
+    y0 = A4[1] - (PEDAL_TOP + (PEDAL_H - ch_ * kk) / 2) + pad_ * kk
+    c.drawImage(cover, (A4[0] - dw) / 2, y0 - dh, dw, dh)
+    line(COVER_NAME, NAME_TOP - NAME_PT * 0.02, "Title", NAME_PT, NAME_PT * 0.5, colors.white)
+    line(t["sub"], SUB_TOP, "Pop", SUB_PT, 1.5, colors.HexColor("#BDC4B8"))
+    lw, lh = Image.open(LOGO_PNG).size
+    c.drawImage(LOGO_PNG, (A4[0] - LOGO_W) / 2, LOGO_BOTTOM, LOGO_W, LOGO_W * lh / lw, mask="auto")
+    c.restoreState()
 doc.addPageTemplates([PageTemplate(id="cover", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="fc")], onPage=cover_bg),
                       PageTemplate(id="p", frames=[Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="f")], onPage=deco)])
-en = section("en"); fr = section("fr")
-en[-1:] = [NextPageTemplate("cover"), PageBreak()]      # la partie française commence aussi par une couverture noire
-story = en + fr[:-1]
-doc.build(story)
+doc.build(story())
 print(OUT)
