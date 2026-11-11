@@ -1,49 +1,50 @@
 #include "PluginEditor.h"
 #include <BinaryData.h>
 #include "WigaWindowSize.h"
+#include "NineHandsMenu.h"
+#include "NineHandsGlow.h"
 
 using namespace juce;
 
 namespace
 {
-    // Repère du dessin : 911 x 928 (design de l'utilisateur, tools/layout.txt). Les images sont livrées en 2x (HiDPI).
-    // Format double : mêmes hauteurs de fenêtre que Ring Think (495 / 557 / 743 px), largeur selon les proportions de la pédale
-    // -> 486 x 495 par défaut et au minimum.
-    constexpr int kW = 911, kH = 928;
+    // Repère du dessin (v2.0.0) : 935 x 900 unités = image 1870 x 1800 / 2 (tools/layout_v2.json, tools/v2/make_art_v2.py).
+    // Format double : mêmes hauteurs de fenêtre que Ring Think (495 / 557 / 743 px), largeur selon les proportions
+    // de la pédale -> 514 x 495 par défaut et au minimum (« 60 % »).
+    constexpr int kW = 935, kH = 900;
     constexpr float kAsset = 2.0f;                               // résolution des images / repère
     constexpr float kRefH = 743.0f;                              // hauteur « 100 % » (= Ring Think à 100 %)
     const float kScales[3] = { 495.0f / 743.0f, 0.75f, 1.0f };
     constexpr float kDefaultScale = 495.0f / 743.0f;             // fenêtre par défaut (= taille minimale)
 
-    // ---- commandes (tools/layout.txt) ----
-    const Point<float> kKnob (565.6f, 296.8f), kKnobCap (565.6f, 296.1f);  constexpr float kKnobR = 55.1f, kCapR = 40.7f;   // RANGE
-    const Point<float> kNumPos[6] = { { 503.6f, 343.3f }, { 491.0f, 279.2f }, { 528.5f, 227.0f }, { 591.2f, 226.2f }, { 632.6f, 283.2f }, { 625.0f, 346.9f } };
-    const Point<float> kSmall[3]    = { { 562.0f, 522.4f }, { 672.9f, 520.9f }, { 783.2f, 523.1f } };     // Q, PURR, BOOST (jupes)
-    const Point<float> kSmallCap[3] = { { 563.4f, 524.5f }, { 674.7f, 524.2f }, { 784.6f, 525.6f } };     // chapeaux (vus un peu en biais)
-    constexpr float kSmallR = 40.7f, kSmallCapR = 29.9f;
+    // ---- commandes ----
+    const Point<float> kKnob (553.0f, 285.0f);  constexpr float kKnobR = 42.0f, kKnobImg = 98.42f;          // RANGE (6 crans)
+    const Point<float> kSmall[3] = { { 552.0f, 480.0f }, { 677.0f, 480.0f }, { 802.0f, 480.0f } };          // Q, PURR, BOOST
+    constexpr float kSmallR = 36.8f, kSmallImg = 86.23f;
     const char* const kSmallId[3] = { "q", "purr", "boost" };
-    const Rectangle<float> kScreen (656.0f, 199.2f, 196.7f, 226.2f);
-    constexpr float kScreenRadius = 6.5f;
-    // commandes rendues par tools/controls_art.py (tools/controls_layout.txt)
-    // footswitch d'ECHOFLEX (photo réelle, mise à l'échelle 0.8657) : même comportement qu'Echoflex
-    const Rectangle<float> kFs (586.0f, 636.8f, 170.0f, 170.0f);           // footswitch (sprite, ombre comprise)
-    const Point<float> kFsC (671.0f, 721.8f);
-    constexpr float kFsHitR = 47.6f;                                        // = footR d'Echoflex (55) x 0.8657
-    constexpr float kFsPressR = 25.7f;                                      // disque assombri pendant l'appui (Echoflex : footR x 0.54)
-    const Point<float> kFsLed (772.4f, 724.8f);
-    const Rectangle<float> kLedGlow (694.4f, 646.8f, 156.0f, 156.0f);      // façade éclairée par la LED
-    const Rectangle<float> kToggle (753.4f, 101.7f, 84.0f, 60.0f);         // inverseur MAN / AUTO (sprite, ombre comprise)
-    const Rectangle<float> kToggleHit (722.0f, 98.0f, 160.0f, 62.0f);
-    constexpr float kLedLensR = 5.8f, kLedGapR = 7.2f, kLedRingR = 9.4f;   // LED 3 mm : lentille, gorge, bague chromée
-    constexpr float kLedR = kLedRingR;
-    const Colour kInk (0xffe2e0de), kAmber (0xffffb040), kAmberHi (0xffffd690), kScreenBg (0xff0e0a07);
+    const char* const kSmallName[3] = { "Q", "PURR", "BOOST" };
+    const Rectangle<float> kScreen = Rectangle<float>::leftTopRightBottom (641.0f, 183.0f, 845.0f, 387.0f);   // zone d'affichage de la vitre
+    constexpr float kScreenRadius = 8.0f;
+    const Rectangle<float> kPill = Rectangle<float>::leftTopRightBottom (515.2f, 586.0f, 838.8f, 624.0f);   // presets / ligne d'état
+    const Point<float> kFsC (677.0f, 705.0f);
+    const Rectangle<float> kFs (kFsC.x - 72.75f, kFsC.y - 72.75f, 145.5f, 145.5f);  // footswitch (dans le fond) + reflet ambre
+    constexpr float kFsBtnR = 28.98f, kFsHitR = 46.0f;
+    const Point<float> kLedC (762.0f, 705.0f);
+    const Rectangle<float> kLed (kLedC.x - 10.5f, kLedC.y - 10.5f, 21.0f, 21.0f);
+    const Rectangle<float> kLedGlow (687.0f, 630.0f, 150.0f, 150.0f);       // façade éclairée par la LED (dosée par Glow)
+    const Point<float> kTogC (812.0f, 107.5f);
+    const Rectangle<float> kToggle (kTogC.x - 39.5f, kTogC.y - 39.5f, 79.0f, 79.0f);   // inverseur photo (haut = MAN, bas = AUTO)
+    const Rectangle<float> kToggleHit (kTogC.x - 34.0f, kTogC.y - 62.0f, 68.0f, 124.0f);
+    constexpr float kJackY = 450.0f, kOutX = 32.0f, kInX = 900.0f;
+    const Rectangle<float> kCryLogo (677.0f - 107.5f, 804.0f - 30.0f, 215.0f, 60.0f);
+    const Colour kInk (0xffe2e0de), kAmber (0xffffb040), kAmberHi (0xffffd690);
     constexpr int kFrames = 33;                                             // positions précalculées du plateau
 
     // plateau à plat (orteil enfoncé, tel que dans le design) ; il pivote autour de la charnière, côté talon
-    constexpr float kPlateL = 65.9f, kPlateR = 473.0f, kPlateTop = 24.9f, kHingeY = 870.4f;
+    constexpr float kPlateL = 47.5f, kPlateR = 447.0f, kPlateTop = 15.5f, kHingeY = 881.0f;
     const Rectangle<float> kPlate (kPlateL, kPlateTop, kPlateR - kPlateL, kHingeY - kPlateTop);
-    constexpr float kRise = 18.0f, kWiden = 1.02f;                          // orteil levé : pointe plus haute et plus large (perspective)
-    constexpr float kThick = 7.0f;                                          // épaisseur visible du plateau (tranches)
+    constexpr float kRise = 10.0f, kWiden = 1.02f;                          // orteil levé : pointe plus haute et plus large (perspective)
+    constexpr float kThick = 5.0f;                                          // épaisseur visible du plateau (tranches)
 
     Image loadPng (const void* d, int n) { return ImageFileFormat::loadFrom (d, (size_t) n).convertedToFormat (Image::ARGB); }
 
@@ -211,8 +212,11 @@ namespace
                         if (p.getAlpha() == 0) continue;
                         const double xr = (double) x / (double) w;
                         const double bpos = (1.0 - gy) + 0.22 * (xr - 0.5);
-                        const float bnd = (float) (bandK * std::exp (-0.5 * std::pow ((bpos - bandC) / bandW, 2.0)));
                         const float a = (float) p.getAlpha();
+                        // le chrome brille, le caoutchouc noir reste mat (reflet pondéré par la luminance du pixel)
+                        const float lumK = jlimit (0.2f, 1.0f, ((float) p.getRed() + (float) p.getGreen() + (float) p.getBlue()) / 3.0f
+                                                                * 255.0f / jmax (1.0f, a) / 160.0f);
+                        const float bnd = lumK * (float) (bandK * std::exp (-0.5 * std::pow ((bpos - bandC) / bandW, 2.0)));
                         auto ch = [&] (uint8 c)
                         {
                             const float v1 = jmin (a, (float) c * gain);
@@ -326,22 +330,22 @@ namespace
                 }
             }
 
-            // ---------- 4) ombre portée : décalage et flou proportionnels à la hauteur au-dessus du boîtier ----------
+            // ---------- 4) ombre portée : celle de Wharry, agrandie x2 (v2.0.0, validée en GIF) ----------
+            // Wharry (repère 1020 x 928) : décalage (2 + 8 lift, 3 + 11 lift), flou boîte 3 + 5 lift (2 passes),
+            // force 0,32 + 0,30 lift ; ici x2 en distance, x1,4 en flou, ramené au repère 935 x 900 (x 0,97)
             std::vector<float> sh ((size_t) (w * h), 0.0f), tmp ((size_t) (w * h), 0.0f);
             {
                 const Image::BitmapData bp (out, Image::BitmapData::readOnly);
-                const double topY = dstQ[0].y, botY = dstQ[3].y;
+                const int ox = roundToInt (2.0 * 0.97 * (2.0 + 8.0 * lift) * sx), oy = roundToInt (2.0 * 0.97 * (3.0 + 11.0 * lift) * sy);
                 for (int y = 0; y < h; ++y)
                     for (int x = 0; x < w; ++x)
                     {
-                        // le point du plateau qui projette ici est plus haut d'environ h (lumière en haut à gauche -> ombre en bas à droite)
-                        const double hgt = jlimit (0.0, 1.0, (botY - (double) y) / jmax (1.0, botY - topY)) * lift;
-                        const int xs = (int) std::round (x - (2.0 + 9.0 * hgt) * sx), ys = (int) std::round (y - (3.0 + 13.0 * hgt) * sy);
+                        const int xs = x - ox, ys = y - oy;
                         if (xs >= 0 && ys >= 0 && xs < w && ys < h)
                             sh[(size_t) (y * w + x)] = (float) ((const PixelARGB*) bp.getPixelPointer (xs, ys))->getAlpha() / 255.0f;
                     }
             }
-            const int rad = jmax (1, roundToInt ((3.0 + 5.0 * lift) * sx));
+            const int rad = jmax (1, roundToInt (1.4 * 0.97 * (3.0 + 5.0 * lift) * sx));
             const float norm = 1.0f / (float) (2 * rad + 1);
             for (int pass = 0; pass < 2; ++pass)      // flou boîte séparable, 2 passes (~ gaussien)
             {
@@ -442,7 +446,30 @@ namespace
         }
     }
 
-    Point<float> rangeNumberPos (int i) { return kNumPos[jlimit (0, crycat::kNumRanges - 1, i)]; }
+    float rangeAngleDeg (int i) { return -125.0f + 50.0f * (float) jlimit (0, crycat::kNumRanges - 1, i); }
+    Point<float> rangeNumberPos (int i)
+    {
+        const float a = degreesToRadians (rangeAngleDeg (i)), r = kKnobR + 21.0f;
+        return { kKnob.x + std::sin (a) * r, kKnob.y - std::cos (a) * r };
+    }
+
+    // index d'un potard : seul calque qui tourne (ombre, chapeau « spun » et bague sont fixes et dans le fond) ;
+    // flou de mouvement selon l'angle parcouru (montée immédiate, retombée x0,6 par image, pas de 3° au plus)
+    struct MarkerAnim
+    {
+        float shown = -1000.0f, last = -1000.0f, span = 0.0f, dir = 1.0f, drawnSpan = -1.0f;
+        bool step (float a)                         // a en degrés ; renvoie true si l'image change
+        {
+            if (shown < -999.0f) { shown = last = a; return true; }
+            const float v = a - last; last = a;
+            if (std::abs (v) > 1.0e-3f) dir = v > 0.0f ? 1.0f : -1.0f;
+            span = jmax (jmin (std::abs (v), 40.0f), span * 0.6f);
+            if (span < 0.15f) span = 0.0f;
+            const bool ch = std::abs (a - shown) > 1.0e-3f || std::abs (span - drawnSpan) > 1.0e-3f;
+            shown = a; drawnSpan = span;
+            return ch;
+        }
+    };
 }
 
 //==============================================================================
@@ -451,19 +478,29 @@ class PedalView : public Component, private Timer
 public:
     explicit PedalView (CrycatProcessor& p) : proc (p)
     {
-        bg.src    = loadPng (BinaryData::background_png, BinaryData::background_pngSize);
-        fsOff.src     = loadPng (BinaryData::fs_off_png, BinaryData::fs_off_pngSize);
-        fsOn.src      = loadPng (BinaryData::fs_on_png, BinaryData::fs_on_pngSize);
-        ledGlow.src   = loadPng (BinaryData::led_glow_png, BinaryData::led_glow_pngSize);
-        tgL.src   = loadPng (BinaryData::toggle_l_png, BinaryData::toggle_l_pngSize);
-        tgM.src   = loadPng (BinaryData::toggle_m_png, BinaryData::toggle_m_pngSize);
-        tgR.src   = loadPng (BinaryData::toggle_r_png, BinaryData::toggle_r_pngSize);
+        bg.src      = loadPng (BinaryData::background_png, BinaryData::background_pngSize);
+        fsRefl.src  = loadPng (BinaryData::fs_refl_png, BinaryData::fs_refl_pngSize);
+        ledOn.src   = loadPng (BinaryData::led_on_png, BinaryData::led_on_pngSize);
+        ledGlow.src = loadPng (BinaryData::led_glow_png, BinaryData::led_glow_pngSize);
+        {
+            const auto strip = loadPng (BinaryData::toggle_strip_png, BinaryData::toggle_strip_pngSize);
+            const int fw = strip.getWidth();
+            for (int i = 0; i < 3; ++i) tg[i].src = strip.getClippedImage ({ 0, i * fw, fw, fw }).createCopy();
+        }
+        markerSrc = loadPng (BinaryData::knob_marker_png, BinaryData::knob_marker_pngSize);
         treadle.setSource (loadPng (BinaryData::treadle_down_png, BinaryData::treadle_down_pngSize));
-        typeface = Typeface::createSystemTypefaceFor (BinaryData::PoppinsMedium_ttf, BinaryData::PoppinsMedium_ttfSize);
-        typefaceBold = Typeface::createSystemTypefaceFor (BinaryData::PoppinsBold_ttf, BinaryData::PoppinsBold_ttfSize);
+        tfReg  = Typeface::createSystemTypefaceFor (BinaryData::PoppinsRegular_ttf, BinaryData::PoppinsRegular_ttfSize);
+        tfMed  = Typeface::createSystemTypefaceFor (BinaryData::PoppinsMedium_ttf, BinaryData::PoppinsMedium_ttfSize);
+        tfBold = Typeface::createSystemTypefaceFor (BinaryData::PoppinsBold_ttf, BinaryData::PoppinsBold_ttfSize);
+        cryLogo = Drawable::createFromImageData (BinaryData::Crycat_Logo_White_svg, BinaryData::Crycat_Logo_White_svgSize);
+        if (cryLogo != nullptr) cryLogo->replaceColour (Colours::white, kInk);
+        menuLnf.f = { tfReg, tfMed, tfBold };
+        glow = (float) NineHandsGlow::percent (JucePlugin_Name) / 100.0f;
         setOpaque (true);
+        setMouseCursor (MouseCursor::NormalCursor);
         startTimerHz (30);
     }
+    ~PedalView() override { stopTimer(); }
 
     // anti-gel v2 : jamais de calcul lourd ici, les caches seront refaits par le timer quand la taille sera stable
     void resized() override { s = (float) getWidth() / (float) kW; resizeSettle = 4; repaint(); }
@@ -474,7 +511,10 @@ public:
     {
         if (getWidth() <= 0) return;
         const float ps = s * dispScale;
-        for (auto* c : { &bg, &fsOff, &fsOn, &ledGlow, &tgL, &tgM, &tgR }) c->prepare (ps);
+        for (auto* c : { &bg, &fsRefl, &ledOn, &ledGlow, &tg[0], &tg[1], &tg[2] }) c->prepare (ps);
+        auto fitMarker = [&] (float units) { const int px = jmax (4, roundToInt (units * ps)); return markerSrc.rescaled (px, px, Graphics::highResamplingQuality); };
+        markerBig = fitMarker (kKnobImg); markerSmall = fitMarker (kSmallImg);
+        buildPrint (ps);
         treadle.prepare (ps);
         askRepaint (getLocalBounds());
     }
@@ -484,15 +524,25 @@ public:
         // anti-gel v2 : aucun rescale ni calcul de cache ici, on dessine les caches existants (ou les originaux)
         lastPaintMs = Time::getMillisecondCounterHiRes();
         repaintAskedMs = 0.0;
-        g.fillAll (Colours::black);
+        g.fillAll (Colour (0xff111113));                      // derrière les jacks et les coins arrondis
         g.drawImage (bg.get(), getLocalBounds().toFloat());
+
+        // ---- halo de la LED sur la façade (sous la sérigraphie), dosé par Glow ----
+        if (ledLevel > 0.003f)
+        {
+            g.setOpacity (jmin (1.0f, ledLevel * glow));
+            g.drawImage (ledGlow.get(), r (kLedGlow));
+            g.setOpacity (1.0f);
+        }
+        // ---- sérigraphie vectorielle (cache à la résolution de l'écran) ----
+        if (print.isValid()) g.drawImage (print, getLocalBounds().toFloat());
+        else drawPrint (g, s);
 
         // ---- plateau (deux positions voisines fondues -> mouvement continu) : talon = pointe levée ----
         const float fpos = jlimit (0.0f, 1.0f, drawnPedal) * (float) (kFrames - 1);
         const int f0 = jlimit (0, kFrames - 1, (int) std::floor (fpos)), f1 = jmin (kFrames - 1, f0 + 1);
         const float fr = fpos - (float) f0;
         const auto tb = r (treadle.designBounds());
-        g.setOpacity (1.0f);
         if (auto* im0 = treadle.frame (f0))
         {
             g.drawImage (*im0, tb);
@@ -500,65 +550,64 @@ public:
         }
         else treadle.drawOriginal (g, tb);
 
-        // ---- sélecteur RANGE : repère gravé + numéro choisi éclairé en ambre ----
+        // ---- RANGE : chiffres (celui choisi en ambre) + index ----
+        for (int i = 0; i < crycat::kNumRanges; ++i)
         {
-            const float ang = rangeAngle (drawnRange);
-            drawPointer (g, kKnobCap, kCapR, ang, 4.2f);
-            const auto np = r (rangeNumberPos (drawnRange));
-            g.setGradientFill (ColourGradient (kAmber.withAlpha (0.35f), np.x, np.y, kAmber.withAlpha (0.0f), np.x + 18.0f * s, np.y, true));
-            g.fillEllipse (np.x - 18.0f * s, np.y - 18.0f * s, 36.0f * s, 36.0f * s);
-            g.setColour (kAmberHi);
-            g.setFont (Font (FontOptions (typeface).withHeight (16.6f * 1.40f * s)));
-            g.drawText (String (drawnRange + 1), Rectangle<float> (np.x - 15.0f * s, np.y - 15.0f * s, 30.0f * s, 30.0f * s), Justification::centred);
+            const auto np = r (rangeNumberPos (i));
+            g.setColour (i == drawnRange ? kAmber : kInk.withAlpha (0.92f));
+            g.setFont (font (tfMed, 14.0f * s));
+            g.drawText (String (i + 1), Rectangle<float> (np.x - 14.0f * s, np.y - 12.0f * s, 28.0f * s, 24.0f * s), Justification::centred);
         }
-
-        // ---- Q / PURR / BOOST ----
-        for (int i = 0; i < 3; ++i)
-            drawPointer (g, kSmallCap[i], kSmallCapR, degreesToRadians (-135.0f + 270.0f * drawnSmall[i]), 3.4f);
+        drawMarker (g, markerBig, kKnob, kKnobImg, rangeAnim);
+        for (int i = 0; i < 3; ++i) drawMarker (g, markerSmall, kSmall[i], kSmallImg, smallAnim[i]);
 
         // ---- inverseur MAN / AUTO : position intermédiaire affichée brièvement pendant la bascule ----
         {
             const bool moving = Time::getMillisecondCounterHiRes() < toggleMidUntil;
-            g.drawImage ((moving ? tgM : (drawnAuto ? tgR : tgL)).get(), r (kToggle));
+            g.drawImage ((moving ? tg[1] : (drawnAuto ? tg[2] : tg[0])).get(), r (kToggle));
         }
 
-        // ---- LED ambre : la façade prend la lumière (calque photo), puis footswitch, puis la LED elle-même ----
-        if (ledLevel > 0.003f)
+        // ---- footswitch (dans le fond) : reflet ambre de la LED sur l'écrou, assombri pendant l'appui (Echoflex) ----
+        if (ledLevel > 0.003f) { g.setOpacity (jmin (1.0f, ledLevel)); g.drawImage (fsRefl.get(), r (kFs)); g.setOpacity (1.0f); }
+        if (pressed)
         {
-            g.setOpacity (jmin (1.0f, ledLevel));
-            g.drawImage (ledGlow.get(), r (kLedGlow));
-            g.setOpacity (1.0f);
+            const auto c = r (kFsC); const float pr = kFsBtnR * 0.92f * s;
+            g.setColour (Colours::black.withAlpha (0.25f));
+            g.fillEllipse (c.x - pr, c.y - pr, pr * 2.0f, pr * 2.0f);
         }
-        {
-            g.drawImage (fsOff.get(), r (kFs));
-            if (ledLevel > 0.003f)    // flanc de l'écrou tourné vers la LED : reflet ambre
-            {
-                g.setOpacity (jmin (1.0f, ledLevel));
-                g.drawImage (fsOn.get(), r (kFs));
-                g.setOpacity (1.0f);
-            }
-            if (pressed)              // comme Echoflex : le bouton s'assombrit tant qu'on appuie
-            {
-                const auto c = r (kFsC); const float pr = kFsPressR * s;
-                g.setColour (Colours::black.withAlpha (0.25f));
-                g.fillEllipse (c.x - pr, c.y - pr, pr * 2.0f, pr * 2.0f);
-            }
-        }
-        drawLed (g, kFsLed, ledLevel);
+        if (ledLevel > 0.003f) { g.setOpacity (jmin (1.0f, ledLevel)); g.drawImage (ledOn.get(), r (kLed)); g.setOpacity (1.0f); }
 
         drawScreen (g);
+        drawPill (g);
     }
 
     // ------------------------------------------------------------ souris
+    void mouseMove (const MouseEvent& e) override
+    {
+        const auto p = e.position / s;
+        int h = 0;
+        if (kPill.contains (p)) h = p.x < kPill.getX() + 34.0f ? 1 : (p.x > kPill.getRight() - 34.0f ? 2 : 3);
+        if (h != pillHover) { pillHover = h; repaint (r (kPill).toNearestInt().expanded (2)); }
+    }
+    void mouseExit (const MouseEvent&) override { if (pillHover != 0) { pillHover = 0; repaint (r (kPill).toNearestInt().expanded (2)); } }
+
     void mouseDown (const MouseEvent& e) override
     {
         const auto p = e.position / s;
         if (e.mods.isPopupMenu()) { showMenu (p); return; }
         drag = Drag::None;
+        if (kPill.contains (p))
+        {
+            statusUntil = 0.0;                       // un clic fait revenir la barre de presets
+            if (p.x < kPill.getX() + 34.0f) stepPreset (-1);
+            else if (p.x > kPill.getRight() - 34.0f) stepPreset (1);
+            else showPresetMenu();
+            return;
+        }
         if (kScreen.contains (p)) { showPresetMenu(); return; }
         for (int i = 0; i < crycat::kNumRanges; ++i)          // clic sur un numéro : plage directe
-            if (p.getDistanceFrom (rangeNumberPos (i)) < 13.0f) { proc.setParamValue ("range", (float) i); return; }
-        if (p.getDistanceFrom (kKnob) < kKnobR) { drag = Drag::Knob; dragStartY = p.y; dragStartRange = currentRange(); return; }
+            if (p.getDistanceFrom (rangeNumberPos (i)) < 11.0f) { proc.setParamValue ("range", (float) i); return; }
+        if (p.getDistanceFrom (kKnob) < kKnobR * 1.1f) { drag = Drag::Knob; dragStartY = p.y; dragStartRange = currentRange(); return; }
         for (int i = 0; i < 3; ++i)
             if (p.getDistanceFrom (kSmall[i]) < kSmallR * 1.15f)
             {
@@ -579,6 +628,7 @@ public:
     void mouseDrag (const MouseEvent& e) override
     {
         const auto p = e.position / s;
+        const float fine = e.mods.isShiftDown() ? 5.0f : 1.0f;
         if (drag == Drag::Knob)
         {
             const int nr = jlimit (0, crycat::kNumRanges - 1, dragStartRange + (int) std::lround ((dragStartY - p.y) / 22.0f));
@@ -587,12 +637,12 @@ public:
         else if (drag == Drag::Pedal)
         {
             // tirer vers le bas = appuyer sur la pointe (son aigu)
-            const float v = jlimit (0.0f, 1.0f, dragStartVal + (p.y - dragStartY) / (kPlate.getHeight() * 0.7f));
+            const float v = jlimit (0.0f, 1.0f, dragStartVal + (p.y - dragStartY) / (kPlate.getHeight() * 0.7f * fine));
             if (auto* par = proc.apvts.getParameter ("pedal")) par->setValueNotifyingHost (v);
         }
         else if (drag >= Drag::Small0)
         {
-            const float v = jlimit (0.0f, 1.0f, dragStartVal + (dragStartY - p.y) / 220.0f);
+            const float v = jlimit (0.0f, 1.0f, dragStartVal + (dragStartY - p.y) / (220.0f * fine));
             if (auto* par = proc.apvts.getParameter (kSmallId[(int) drag - (int) Drag::Small0])) par->setValueNotifyingHost (v);
         }
     }
@@ -618,10 +668,12 @@ public:
     void mouseWheelMove (const MouseEvent& e, const MouseWheelDetails& w) override
     {
         const auto p = e.position / s;
-        if (p.getDistanceFrom (kKnob) < kKnobR)
+        if (p.getDistanceFrom (kKnob) < kKnobR * 1.1f)
             proc.setParamValue ("range", (float) jlimit (0, crycat::kNumRanges - 1, currentRange() + (w.deltaY > 0 ? 1 : -1)));
         else if (kPlate.contains (p))
             proc.setParamValue ("pedal", jlimit (0.0f, 1.0f, proc.apvts.getRawParameterValue ("pedal")->load() - w.deltaY * 0.25f));
+        else if (kPill.contains (p))
+            stepPreset (w.deltaY > 0 ? -1 : 1);
         else
             for (int i = 0; i < 3; ++i)
                 if (p.getDistanceFrom (kSmall[i]) < kSmallR * 1.15f)
@@ -634,6 +686,7 @@ private:
 
     Rectangle<float> r (Rectangle<float> d) const { return d * s; }
     Point<float> r (Point<float> d) const { return d * s; }
+    static Font font (const Typeface::Ptr& tf, float pointHeight) { return Font (FontOptions (tf).withPointHeight (pointHeight)); }
     float physScale() const
     {
         if (auto* d = Desktop::getInstance().getDisplays().getDisplayForRect (getScreenBounds())) return jmax (1.0f, (float) d->scale);
@@ -648,113 +701,116 @@ private:
     }
     int currentRange() const { return jlimit (0, crycat::kNumRanges - 1, (int) std::lround (proc.apvts.getRawParameterValue ("range")->load())); }
     bool param (const char* id) const { return proc.apvts.getRawParameterValue (id)->load() > 0.5f; }
-    static float rangeAngle (int i)
-    {
-        const auto d = rangeNumberPos (i) - kKnobCap;
-        return std::atan2 (d.x, -d.y);
-    }
 
-    // repère gravé : trait noir mat avec un fin liseré clair côté lumière (comme sur le design)
-    void drawPointer (Graphics& g, Point<float> c0, float capR, float ang, float width)
+    // ------------------------------------------------------------ sérigraphie (Poppins + logo SVG), en unités x k
+    void spaced (Graphics& g, const String& t, Point<float> c, const Typeface::Ptr& tf, float size, float spacing, float k)
     {
-        const Point<float> dir (std::sin (ang), -std::cos (ang));
-        const auto c = r (c0);
-        const auto a = c + dir * (capR * 0.30f * s), b = c + dir * (capR * 0.90f * s);
-        const Point<float> off (-0.6f * s, -0.6f * s);
-        g.setColour (Colours::white.withAlpha (0.35f));
-        g.drawLine ({ a + off, b + off }, (width + 0.6f) * s);
-        g.setColour (Colour (0xf2141212));
-        Path p; p.startNewSubPath (a); p.lineTo (b);
-        g.strokePath (p, PathStrokeType (width * s, PathStrokeType::curved, PathStrokeType::rounded));
+        auto f = font (tf, size * k);
+        f = f.withExtraKerningFactor (spacing * k / jmax (1.0f, f.getHeight()));
+        g.setFont (f);
+        const float w = GlyphArrangement::getStringWidth (f, t) - spacing * k;      // pas d'espace après la dernière lettre
+        g.drawText (t, Rectangle<float> (c.x * k - w * 0.5f, c.y * k - size * k, w + spacing * k + 2.0f, size * 2.0f * k), Justification::centredLeft, false);
     }
-
-    // LED 3 mm (comme Holyverb) : bague chromée éclairée en haut à gauche, gorge sombre, lentille ambre ;
-    // allumée : cœur presque blanc, corps orangé, bord plus sombre ; reflet fixe de la lumière ambiante sur le dôme.
-    // Le halo n'est PAS un disque coloré posé dessus : c'est la façade qui reçoit la lumière (calque led_glow).
-    void drawLed (Graphics& g, Point<float> c0, float lvl)
+    void drawPrint (Graphics& g, float k)
     {
-        const auto c = r (c0);
-        // ombre portée de la bague (lumière en haut à gauche)
-        const float rr = kLedRingR * s;
-        g.setColour (Colours::black.withAlpha (0.45f));
-        g.fillEllipse (c.x - rr + 0.9f * s, c.y - rr + 1.4f * s, rr * 2.0f, rr * 2.0f);
-        ColourGradient chrome (Colour (0xffd2d4d8), c.x - rr * 0.8f, c.y - rr * 0.9f, Colour (0xff2a2c31), c.x + rr * 0.8f, c.y + rr * 0.9f, false);
-        chrome.addColour (0.45, Colour (0xff74777e));
-        g.setGradientFill (chrome);
-        g.fillEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f);
-        if (lvl > 0.003f)       // la bague reflète un peu la LED
+        const auto ink = kInk.withAlpha (0.92f);
+        g.setColour (ink);
+        auto tick = [&] (Point<float> c, float a, float r0, float r1, float w)
         {
-            g.setGradientFill (ColourGradient (kAmber.withAlpha (0.35f * lvl), c.x, c.y, kAmber.withAlpha (0.0f), c.x + rr, c.y, true));
-            g.fillEllipse (c.x - rr, c.y - rr, rr * 2.0f, rr * 2.0f);
-        }
-        // gorge sombre
-        const float gr = kLedGapR * s;
-        g.setGradientFill (ColourGradient (Colour (0xff020101), c.x - gr * 0.6f, c.y - gr * 0.7f, Colour (0xff1c1612), c.x + gr * 0.7f, c.y + gr * 0.8f, false));
-        g.fillEllipse (c.x - gr, c.y - gr, gr * 2.0f, gr * 2.0f);
-        // lentille éteinte : ambre foncé translucide
-        const float lr = kLedLensR * s;
-        g.setGradientFill (ColourGradient (Colour (0xff5a2f0c), c.x - lr * 0.3f, c.y - lr * 0.4f, Colour (0xff160903), c.x + lr, c.y + lr, true));
-        g.fillEllipse (c.x - lr, c.y - lr, lr * 2.0f, lr * 2.0f);
-        if (lvl > 0.003f)
+            const Point<float> d (std::sin (a), -std::cos (a));
+            g.drawLine ({ (c + d * r0) * k, (c + d * r1) * k }, w * k);
+        };
+        for (int i = 0; i < crycat::kNumRanges; ++i) tick (kKnob, degreesToRadians (rangeAngleDeg (i)), kKnobR + 5.0f, kKnobR + 11.0f, 1.75f);
+        g.setFont (font (tfReg, 10.5f * k));
+        g.drawText ("LOW",  Rectangle<float> ((kKnob.x - kKnobR - 15.0f - 20.0f) * k, (kKnob.y + kKnobR + 19.0f - 8.0f) * k, 40.0f * k, 16.0f * k), Justification::centred);
+        g.drawText ("HIGH", Rectangle<float> ((kKnob.x + kKnobR + 15.0f - 20.0f) * k, (kKnob.y + kKnobR + 19.0f - 8.0f) * k, 40.0f * k, 16.0f * k), Justification::centred);
+        spaced (g, "RANGE", { kKnob.x, kKnob.y + kKnobR + 36.0f }, tfMed, 13.0f, 2.5f, k);
+        for (int i = 0; i < 3; ++i)
         {
-            const float hot = jlimit (0.0f, 1.0f, lvl * 1.05f);
-            ColourGradient body (Colour (0xfffff6e2).withAlpha (hot), c.x + lr * 0.03f, c.y + lr * 0.02f, Colour (0xffb44a06).withAlpha (lvl), c.x + lr, c.y, true);
-            body.addColour (0.18, Colour (0xffffe0a6).withAlpha (hot));
-            body.addColour (0.40, Colour (0xffffa22e).withAlpha (lvl));
-            body.addColour (0.75, Colour (0xffe9760f).withAlpha (lvl));
-            g.setGradientFill (body);
-            g.fillEllipse (c.x - lr, c.y - lr, lr * 2.0f, lr * 2.0f);
+            for (int t = 0; t <= 10; ++t)
+                tick (kSmall[i], degreesToRadians (-135.0f + 27.0f * (float) t), kSmallR + 4.5f, kSmallR + ((t % 5) == 0 ? 11.5f : 8.5f), 1.3f);
+            spaced (g, kSmallName[i], { kSmall[i].x, kSmall[i].y + kSmallR + 26.0f }, tfMed, 13.0f, 1.75f, k);
         }
-        g.setColour (Colours::black.withAlpha (0.35f));
-        g.drawEllipse (c.x - lr, c.y - lr, lr * 2.0f, lr * 2.0f, 0.7f * s);
-        ColourGradient sp (Colours::white.withAlpha (0.30f + 0.15f * lvl), c.x - lr * 0.38f, c.y - lr * 0.50f,
-                           Colours::white.withAlpha (0.0f), c.x - lr * 0.38f + lr * 0.36f, c.y - lr * 0.50f, true);
-        g.setGradientFill (sp);
-        g.fillEllipse (c.x - lr * 0.74f, c.y - lr * 0.80f, lr * 0.72f, lr * 0.56f);
+        spaced (g, "MAN",  { kTogC.x, kTogC.y - 49.0f }, tfMed, 14.0f, 1.5f, k);
+        spaced (g, "AUTO", { kTogC.x, kTogC.y + 49.0f }, tfMed, 14.0f, 1.5f, k);
+        g.setColour (kInk.withAlpha (0.30f));
+        g.fillRect (497.0f * k, (410.0f - 0.5f) * k, 360.0f * k, jmax (1.0f, 1.0f * k));
+        g.setColour (ink);
+        for (int side = 0; side < 2; ++side)          // OUT à gauche (se lit de bas en haut), IN à droite (de haut en bas)
+        {
+            Graphics::ScopedSaveState ss (g);
+            const Point<float> c (side == 0 ? kOutX : kInX, kJackY);
+            g.addTransform (AffineTransform::rotation (side == 0 ? -MathConstants<float>::halfPi : MathConstants<float>::halfPi, c.x * k, c.y * k));
+            g.setFont (font (tfMed, 16.5f * k));
+            g.drawText (side == 0 ? "OUT" : "IN", Rectangle<float> ((c.x - 30.0f) * k, (c.y - 12.0f) * k, 60.0f * k, 24.0f * k), Justification::centred);
+        }
+        if (cryLogo != nullptr) cryLogo->drawWithin (g, kCryLogo * k, RectanglePlacement::centred, 0.92f);
+    }
+    void buildPrint (float ps)
+    {
+        const int w = jmax (1, roundToInt ((float) kW * ps)), h = jmax (1, roundToInt ((float) kH * ps));
+        Image im (Image::ARGB, w, h, true);
+        { Graphics g (im); drawPrint (g, ps); }
+        print = im;
     }
 
-    // écran ambre : plage + état, courbe de réponse en direct, fréquence centrale, course de la pédale, ligne d'état
+    // index d'un potard, flou de mouvement par moyenne progressive (comme nh::Knob)
+    void drawMarker (Graphics& g, const Image& img, Point<float> c0, float sizeUnits, const MarkerAnim& an)
+    {
+        const Image& im = img.isValid() ? img : markerSrc;
+        const auto c = r (c0);
+        const float sc = sizeUnits * s / (float) im.getWidth();
+        auto place = [&] (float deg)
+        {
+            return AffineTransform::translation (-im.getWidth() * 0.5f, -im.getHeight() * 0.5f).scaled (sc)
+                       .rotated (degreesToRadians (deg)).translated (c.x, c.y);
+        };
+        Graphics::ScopedSaveState ss (g);
+        g.setImageResamplingQuality (Graphics::highResamplingQuality);
+        if (an.span <= 0.0f) { g.drawImageTransformed (im, place (an.shown), false); return; }
+        const int n = jlimit (4, 16, (int) std::ceil (an.span / 3.0f) + 1);
+        for (int k = 0; k < n; ++k)
+        {
+            g.setOpacity (1.0f / (float) (k + 1));
+            g.drawImageTransformed (im, place (an.shown - an.dir * an.span * (float) k / (float) (n - 1)), false);
+        }
+    }
+
+    // écran ambre dans la vitre encastrée : plage + état, courbe de réponse, fréquence centrale, Q / BOOST, course de la pédale
     void drawScreen (Graphics& g)
     {
         const auto sc = r (kScreen);
-        g.setColour (kScreenBg); g.fillRoundedRectangle (sc, kScreenRadius * s);
+        Graphics::ScopedSaveState ss (g);
+        { Path clip; clip.addRoundedRectangle (sc, kScreenRadius * s); g.reduceClipRegion (clip); }
         auto st = proc.currentSettings();
         const float pos = jlimit (0.0f, 1.0f, drawnPedal);
         const float alpha = drawnOn ? 1.0f : 0.42f;
-        auto area = sc.reduced (8.0f * s);
-        const float fh = sc.getHeight();
+        const float gh = sc.getHeight(), M = 13.0f * s;
+        const float X0 = sc.getX() + M, X1 = sc.getRight() - M;
 
         // ligne du haut : plage + état
-        g.setFont (Font (FontOptions (typefaceBold).withHeight (fh * 0.064f)));
-        auto top = area.removeFromTop (fh * 0.08f);
-        g.setColour (kAmber.withAlpha (0.9f * jmax (alpha, 0.6f)));
+        g.setFont (font (tfBold, 13.0f * s));
+        g.setColour (kAmber.withAlpha (jmax (alpha, 0.6f)));
+        const Rectangle<float> top (X0, sc.getY() + 0.085f * gh - 9.0f * s, X1 - X0, 18.0f * s);
         g.drawText ("RANGE " + String (drawnRange + 1) + "  " + crycat::range (drawnRange).label, top, Justification::centredLeft);
         String state = drawnOn ? "ON" : "BYPASS";
         if (drawnAuto && param ("active")) state = drawnOn ? "AUTO ON" : "AUTO";
         g.drawText (state, top, Justification::centredRight);
-        area.removeFromTop (fh * 0.02f);
-        g.setColour (kAmber.withAlpha (0.22f)); g.fillRect (area.getX(), area.getY(), area.getWidth(), jmax (1.0f, 0.8f * s));
-        area.removeFromTop (fh * 0.03f);
+        g.setColour (Colour (0xff462e10));
+        g.fillRect (X0, sc.getY() + 0.15f * gh, X1 - X0, jmax (1.0f, 0.5f * s));
 
         // courbe de réponse : 80 Hz .. 5 kHz (log), -24 .. +24 dB
-        auto plot = area.removeFromTop (fh * 0.40f);
+        const auto plot = Rectangle<float>::leftTopRightBottom (X0, sc.getY() + 0.19f * gh, X1, sc.getY() + 0.52f * gh);
         const float f0 = 80.0f, f1 = 5000.0f, dbMax = 24.0f;
         auto xOf = [&] (float f) { return plot.getX() + plot.getWidth() * std::log (f / f0) / std::log (f1 / f0); };
         auto yOf = [&] (float db) { return plot.getCentreY() - plot.getHeight() * 0.5f * jlimit (-1.0f, 1.0f, db / dbMax); };
         {
-            // plage de balayage (talon -> pointe)
             const auto& rg = crycat::range (drawnRange);
             g.setColour (kAmber.withAlpha (0.07f * alpha + 0.03f));
             g.fillRect (Rectangle<float>::leftTopRightBottom (xOf (rg.fLo), plot.getY(), xOf (rg.fHi), plot.getBottom()));
-            // grille : 0 dB + décades
-            g.setColour (kAmber.withAlpha (0.16f));
-            g.fillRect (plot.getX(), yOf (0.0f), plot.getWidth(), jmax (1.0f, 0.7f * s));
-            for (float f : { 100.0f, 1000.0f })
-                g.fillRect (xOf (f), plot.getY(), jmax (1.0f, 0.7f * s), plot.getHeight());
-            g.setColour (kAmber.withAlpha (0.12f));
-            for (float f : { 200.0f, 500.0f, 2000.0f })
-                g.fillRect (xOf (f), plot.getY(), jmax (1.0f, 0.6f * s), plot.getHeight());
-
+            g.setColour (Colour (0xff3c280e));
+            g.fillRect (plot.getX(), yOf (0.0f), plot.getWidth(), jmax (1.0f, 0.5f * s));
+            for (float f : { 100.0f, 1000.0f }) g.fillRect (xOf (f), plot.getY(), jmax (1.0f, 0.5f * s), plot.getHeight());
             Path curve, fill;
             const int np = 90;
             for (int i = 0; i <= np; ++i)
@@ -766,64 +822,90 @@ private:
                 fill.lineTo (x, y);
             }
             fill.lineTo (plot.getRight(), plot.getBottom()); fill.closeSubPath();
-            g.setGradientFill (ColourGradient (kAmber.withAlpha (0.38f * alpha), 0, plot.getY(), kAmber.withAlpha (0.02f), 0, plot.getBottom(), false));
+            g.setColour (Colour (0xff462808).withMultipliedAlpha (alpha));
             g.fillPath (fill);
             g.setColour (kAmberHi.withAlpha (0.95f * alpha));
-            g.strokePath (curve, PathStrokeType (1.8f * s, PathStrokeType::curved, PathStrokeType::rounded));
-            // repère de la fréquence centrale
+            g.strokePath (curve, PathStrokeType (1.4f * s, PathStrokeType::curved, PathStrokeType::rounded));
             const float fc = crycat::centreHz (drawnRange, pos);
             const float xc = xOf (fc), yc = yOf (crycat::magnitudeDb (st, pos, fc));
-            g.setColour (kAmber.withAlpha (0.45f * alpha));
-            g.fillRect (xc - 0.5f * s, yc, jmax (1.0f, 1.0f * s), plot.getBottom() - yc);
             g.setColour (kAmberHi.withAlpha (alpha));
-            g.fillEllipse (xc - 3.2f * s, yc - 3.2f * s, 6.4f * s, 6.4f * s);
+            g.fillEllipse (xc - 2.6f * s, yc - 2.6f * s, 5.2f * s, 5.2f * s);
         }
-        area.removeFromTop (fh * 0.02f);
 
-        // fréquence centrale en grand
+        // fréquence centrale en grand + Q / BOOST
         {
             const float fc = crycat::centreHz (drawnRange, pos);
-            g.setFont (Font (FontOptions (typefaceBold).withHeight (fh * 0.13f)));
+            g.setFont (font (tfBold, 29.0f * s));
             g.setColour (Colour (0xfffff1dc).withAlpha (alpha));
             const String txt = fc >= 1000.0f ? String (fc / 1000.0f, 2) + " kHz" : String (roundToInt (fc)) + " Hz";
-            g.drawText (txt, area.removeFromTop (fh * 0.14f), Justification::centred);
-            g.setFont (Font (FontOptions (typeface).withHeight (fh * 0.06f)));
-            g.setColour (kAmber.withAlpha (0.85f * alpha));
-            g.drawText ("Q " + String (crycat::effectiveQ (st.q, pos), 1) + "   ·   BOOST +" + String (st.boost * 15.0f, 1) + " dB",
-                        area.removeFromTop (fh * 0.075f), Justification::centred);
+            g.drawText (txt, Rectangle<float> (X0, sc.getY() + 0.635f * gh - 22.0f * s, X1 - X0, 44.0f * s), Justification::centred);
+            g.setFont (font (tfMed, 11.0f * s));
+            g.setColour (kAmber.withAlpha (alpha));
+            g.drawText ("Q " + String (crycat::effectiveQ (st.q, pos), 1) + "  \xc2\xb7  BOOST +" + String (st.boost * 15.0f, 1) + " dB",
+                        Rectangle<float> (X0, sc.getY() + 0.75f * gh - 9.0f * s, X1 - X0, 18.0f * s), Justification::centred);
         }
 
-        // ligne d'état (valeurs des réglages en direct, ou consigne MIDI)
-        auto stRow = area.removeFromBottom (fh * 0.07f);
-        g.setFont (Font (FontOptions (typeface).withHeight (fh * 0.052f)));
-        const bool special = proc.learnTarget.load() >= 0 || proc.isCalibrating() || Time::getMillisecondCounterHiRes() < learnMsgUntil;
-        g.setColour (kAmber.withAlpha (special ? 1.0f : 0.72f * jmax (alpha, 0.6f)));
-        g.drawFittedText (drawnStatus, stRow.toNearestInt(), Justification::centred, 1, 0.5f);
-        area.removeFromBottom (fh * 0.015f);
-
         // course de la pédale : barres du talon (gauche) à la pointe (droite)
-        auto bars = area.reduced (0, fh * 0.012f);
         const int nb = 16;
-        const float bw = bars.getWidth() / (float) nb;
+        const float bw = (X1 - X0) / (float) nb, by = sc.getBottom() - 11.0f * s;
         for (int i = 0; i < nb; ++i)
         {
             const float t = ((float) i + 0.5f) / (float) nb;
-            const float hgt = bars.getHeight() * (0.3f + 0.7f * t);
+            const float hh = (4.5f + 10.5f * t) * s;
             const bool lit = t <= pos + 0.001f;
-            g.setColour (kAmber.withAlpha ((lit ? 0.9f : 0.16f) * alpha));
-            g.fillRect (bars.getX() + (float) i * bw + bw * 0.16f, bars.getBottom() - hgt, bw * 0.68f, hgt);
+            g.setColour (lit ? kAmber.withAlpha (alpha) : Colour (0xff32200a));
+            g.fillRect (X0 + (float) i * bw, by - hh, bw - 2.5f * s, hh);
+        }
+    }
+
+    // ------------------------------------------------------------ pastille : barre de presets, remplacée par la ligne d'état
+    String presetName() const { return CrycatProcessor::factory (proc.getCurrentFactory()).name; }
+    void stepPreset (int d)
+    {
+        const int n = CrycatProcessor::kNumFactory;
+        proc.loadFactory ((proc.getCurrentFactory() + d + n) % n);
+        statusUntil = 0.0;
+    }
+    void drawPill (Graphics& g)
+    {
+        const auto pr = r (kPill);
+        g.setColour (Colour (0xf0080707));
+        g.fillRoundedRectangle (pr, pr.getHeight() * 0.5f);
+        g.setColour (Colour (0xc8787674));
+        g.drawRoundedRectangle (pr.reduced (0.5f * s), pr.getHeight() * 0.5f, jmax (1.0f, 0.5f * s));
+        g.setFont (font (tfMed, 20.0f * s));
+        const float sa = jlimit (0.0f, 1.0f, statusAlpha);
+        if (sa < 0.999f)
+        {
+            g.setColour (Colour (0xffeceae8).withAlpha (1.0f - sa));
+            g.drawFittedText (presetName(), pr.reduced (36.0f * s, 0).toNearestInt(), Justification::centred, 1, 0.7f);
+            for (int side = 0; side < 2; ++side)
+            {
+                const float cx = side == 0 ? pr.getX() + 17.0f * s : pr.getRight() - 17.0f * s, cy = pr.getCentreY(), t = 5.5f * s;
+                const bool hov = pillHover == side + 1;
+                Path tri;
+                if (side == 0) tri.addTriangle (cx + t * 0.5f, cy - t, cx + t * 0.5f, cy + t, cx - t * 0.9f, cy);
+                else           tri.addTriangle (cx - t * 0.5f, cy - t, cx - t * 0.5f, cy + t, cx + t * 0.9f, cy);
+                g.setColour ((hov ? Colours::white : Colour (0xffa09e9c)).withAlpha (1.0f - sa));
+                g.fillPath (tri);
+            }
+        }
+        if (sa > 0.001f)
+        {
+            g.setColour (Colour (0xffeceae8).withAlpha (sa));
+            g.drawFittedText (drawnStatus, pr.reduced (pr.getHeight() * 0.5f, 0).toNearestInt(), Justification::centred, 1, 0.6f);
         }
     }
 
     String statusText() const
     {
-        if (proc.isCalibrating()) return "CALIBRATION : sweep the pedal heel <-> toe";
+        if (proc.isCalibrating()) return "CALIBRATION: sweep the pedal heel <-> toe";
         const int lt = proc.learnTarget.load();
         if (lt >= 0) return String ("MIDI LEARN: move a control for ") + CrycatProcessor::learnDef (lt).name;
         if (Time::getMillisecondCounterHiRes() < learnMsgUntil) return learnMsg;      // "<Commande> = CC n" pendant 2 s
         auto pc = [this] (const char* id) { return String (roundToInt (proc.apvts.getParameter (id)->getValue() * 100.0f)) + " %"; };
         return "PEDAL " + String (roundToInt (proc.getPedalShown() * 100.0f)) + " %"
-             + "  ·  Q " + pc ("q") + "  ·  PURR " + pc ("purr") + "  ·  BOOST " + pc ("boost");
+             + "  \xc2\xb7  Q " + pc ("q") + "  \xc2\xb7  PURR " + pc ("purr") + "  \xc2\xb7  BOOST " + pc ("boost");
     }
 
     void timerCallback() override
@@ -837,7 +919,6 @@ private:
         else if (resizeSettle == 0 && now - lastScaleCheckMs > 250.0)
         {
             lastScaleCheckMs = now;
-            // échelle de l'écran (Windows / Retina) ou mise à l'échelle imposée par l'hôte : caches refaits si elle change
             const float sc = physScale(), ap = (float) Component::getApproximateScaleFactorForComponent (this);
             if (std::abs (sc - dispScale) > 0.01f || std::abs (ap - approxScale) > 0.01f) { dispScale = sc; approxScale = ap; rebuildCaches(); }
         }
@@ -861,40 +942,43 @@ private:
             if (built) askRepaint (r (treadle.designBounds()).toNearestInt().expanded (2));
         }
 
-        // MIDI Learn : confirmation 2 s dans la ligne d'état de l'écran
+        // MIDI Learn : confirmation 2 s dans la ligne d'état
         const int learned = proc.lastLearned.exchange (-1);
         if (learned >= 0)
         {
             learnMsg = String (CrycatProcessor::learnDef (learned).name) + " = " + proc.learnAssignText (learned);
-            learnMsgUntil = Time::getMillisecondCounterHiRes() + 2000.0;
+            learnMsgUntil = now + 2000.0;
         }
 
         const int rg = currentRange();
         const bool autoM = param ("auto"), on = proc.isEffectOn(), armed = autoM && param ("active");
         const float ped = proc.getPedalShown();
-        const String st = statusText();
-        bool screen = false;
+        bool screen = false, moved = false;
 
         if (std::abs (ped - drawnPedal) > 0.002f)
         {
+            if (drawnPedal >= 0.0f) moved = true;
             drawnPedal = ped; screen = true;
             askRepaint (r (treadle.designBounds()).toNearestInt().expanded (2));
         }
         if (rg != drawnRange)
         {
-            const float h = kKnobR + 32.0f;
+            if (drawnRange >= 0) moved = true;
+            const float h = kKnobR + 34.0f;
             askRepaint (r (Rectangle<float> (kKnob.x - h, kKnob.y - h, 2 * h, 2 * h)).toNearestInt().expanded (2));
             drawnRange = rg; screen = true;
         }
-        const double nowMs = Time::getMillisecondCounterHiRes();
-        if (drawnAuto != autoM && drawnStarted) toggleMidUntil = nowMs + 55.0;
+        if (rangeAnim.step (rangeAngleDeg (rg)))
+            askRepaint (r (Rectangle<float> (kKnob.x - kKnobImg * 0.5f, kKnob.y - kKnobImg * 0.5f, kKnobImg, kKnobImg)).toNearestInt().expanded (2));
+        if (drawnAuto != autoM && drawnStarted) toggleMidUntil = now + 55.0;
         if (autoM != drawnAuto || on != drawnOn || armed != drawnArmed)
         {
+            if (drawnStarted) moved = true;
             drawnAuto = autoM; drawnOn = on; drawnArmed = armed; screen = true;
             askRepaint (r (kToggle).toNearestInt().expanded (3));
         }
         drawnStarted = true;
-        const bool toggleMoving = nowMs < toggleMidUntil;
+        const bool toggleMoving = now < toggleMidUntil;
         if (toggleMoving != drawnToggleMoving) { drawnToggleMoving = toggleMoving; askRepaint (r (kToggle).toNearestInt().expanded (3)); }
         // LED (comme Echoflex) : allumage / extinction en fondu (0.45 / 0.28 par image) ; veille AUTO = faible lueur
         const float ledTarget = on ? 1.0f : (armed ? 0.10f : 0.0f);
@@ -911,29 +995,47 @@ private:
             const float v = proc.apvts.getParameter (kSmallId[i])->getValue();
             if (std::abs (v - drawnSmall[i]) > 0.002f)
             {
+                if (drawnSmall[i] >= 0.0f) moved = true;
                 drawnSmall[i] = v; screen = true;      // Q et BOOST changent la courbe
-                askRepaint (r (Rectangle<float> (kSmall[i].x - kSmallR, kSmall[i].y - kSmallR, 2 * kSmallR, 2 * kSmallR)).toNearestInt().expanded (2));
             }
+            if (smallAnim[i].step (-135.0f + 270.0f * drawnSmall[i]))
+                askRepaint (r (Rectangle<float> (kSmall[i].x - kSmallImg * 0.5f, kSmall[i].y - kSmallImg * 0.5f, kSmallImg, kSmallImg)).toNearestInt().expanded (2));
         }
-        if (st != drawnStatus) { drawnStatus = st; screen = true; }
         if (screen) askRepaint (r (kScreen).toNearestInt().expanded (2));
-    }
-    Rectangle<int> ledArea (Point<float> c) const { const float h = kLedR * 4.0f; return r (Rectangle<float> (c.x - h, c.y - h, 2 * h, 2 * h)).toNearestInt().expanded (1); }
 
+        // pastille : la ligne d'état prend la place des presets pendant les réglages (fondu ~120 ms), puis s'efface (~300 ms)
+        const String st = statusText();
+        const bool special = proc.learnTarget.load() >= 0 || proc.isCalibrating() || now < learnMsgUntil;
+        if (moved || special) statusUntil = now + 2500.0;
+        const float target = (now < statusUntil) ? 1.0f : 0.0f;
+        statusAlpha += (target - statusAlpha) * (target > statusAlpha ? 0.45f : 0.11f);
+        if (std::abs (statusAlpha - target) < 0.004f) statusAlpha = target;
+        const int fac = proc.getCurrentFactory();
+        if (st != drawnStatus || std::abs (statusAlpha - drawnStatusAlpha) > 0.003f || fac != drawnFactory)
+        {
+            drawnStatus = st; drawnStatusAlpha = statusAlpha; drawnFactory = fac;
+            askRepaint (r (kPill).toNearestInt().expanded (2));
+        }
+    }
+
+    // ------------------------------------------------------------ menus (style Octopus, ouverts là où l'on clique)
     void showPresetMenu()
     {
-        PopupMenu m, rgs, fac;
-        const int cur = currentRange();
-        for (int i = 0; i < crycat::kNumRanges; ++i) rgs.addItem (1 + i, crycat::range (i).name, true, i == cur);
-        for (int i = 0; i < CrycatProcessor::kNumFactory; ++i) fac.addItem (101 + i, String (i + 1) + "  " + CrycatProcessor::factory (i).name);
-        m.addSectionHeader ("Presets");
-        m.addSubMenu ("NINE HANDS | DSP factory presets (PC 1-10)", fac);
+        PopupMenu m, rgs;
+        m.setLookAndFeel (&menuLnf);
+        NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPreset, NineHandsMenu::kAccent, "Presets", presetName());
+        const int cur = proc.getCurrentFactory();
+        for (int i = 0; i < CrycatProcessor::kNumFactory; ++i)
+            m.addItem (101 + i, String (i + 1) + ". " + CrycatProcessor::factory (i).name, true, i == cur);
+        m.addSeparator();
+        const int cr = currentRange();
+        for (int i = 0; i < crycat::kNumRanges; ++i) rgs.addItem (1 + i, crycat::range (i).name, true, i == cr);
         m.addSubMenu ("Sweep range", rgs);
         Component::SafePointer<PedalView> sp (this);
-        m.showMenuAsync (PopupMenu::Options().withTargetScreenArea (localAreaToGlobal (r (kScreen).toNearestInt())), [sp] (int res)
+        m.showMenuAsync (PopupMenu::Options().withMousePosition(), [sp] (int res)
         {
             if (sp == nullptr || res == 0) return;
-            if (res >= 101) sp->proc.loadFactory (res - 101);
+            if (res >= 101) { sp->proc.loadFactory (res - 101); sp->statusUntil = 0.0; }
             else sp->proc.setParamValue ("range", (float) (res - 1));
         });
     }
@@ -941,10 +1043,10 @@ private:
     // commande sous la souris (même ordre de test que mouseDown) : index MIDI Learn, -1 = hors commande
     int learnIndexAt (Point<float> p) const
     {
-        if (kScreen.contains (p)) return -1;
+        if (kScreen.contains (p) || kPill.contains (p)) return -1;
         for (int i = 0; i < crycat::kNumRanges; ++i)
-            if (p.getDistanceFrom (rangeNumberPos (i)) < 13.0f) return CrycatProcessor::lRange;
-        if (p.getDistanceFrom (kKnob) < kKnobR) return CrycatProcessor::lRange;
+            if (p.getDistanceFrom (rangeNumberPos (i)) < 11.0f) return CrycatProcessor::lRange;
+        if (p.getDistanceFrom (kKnob) < kKnobR * 1.1f) return CrycatProcessor::lRange;
         for (int i = 0; i < 3; ++i)
             if (p.getDistanceFrom (kSmall[i]) < kSmallR * 1.15f) return CrycatProcessor::lQ + i;
         if (kToggleHit.contains (p)) return CrycatProcessor::lAuto;
@@ -953,12 +1055,10 @@ private:
         return -1;
     }
 
-    // clic droit sur une commande : MIDI Learn de cette commande en tête du menu
     void addLearnSection (PopupMenu& m, int i)
     {
         const String name = CrycatProcessor::learnDef (i).name;
         const int lt = proc.learnTarget.load();
-        m.addSectionHeader (name);
         m.addItem (1000 + i, "MIDI Learn: " + name + " (" + proc.learnAssignText (i) + ")", true, lt == i);
         m.addItem (1100 + i, "Clear MIDI: " + name, proc.learnAssignText (i) != "none");
         if (lt >= 0) m.addItem (1200, "Cancel MIDI learn");
@@ -977,7 +1077,6 @@ private:
         midi.addSeparator();
         midi.addItem (1202, "MAN / AUTO and footswitch also learn a MIDI note", false);
         m.addSubMenu ("MIDI", midi);
-        m.addSeparator();
     }
 
     void handleLearnChoice (int r)
@@ -993,8 +1092,19 @@ private:
     {
         auto* ed = findParentComponentOfClass<CrycatEditor>();
         PopupMenu m;
+        m.setLookAndFeel (&menuLnf);
         const int learnIdx = learnIndexAt (p);
-        if (learnIdx >= 0) addLearnSection (m, learnIdx);
+        if (learnIdx >= 0)
+        {
+            const int ico = learnIdx == CrycatProcessor::lPedal ? NineHandsMenu::icoPedal
+                          : (learnIdx == CrycatProcessor::lAuto || learnIdx == CrycatProcessor::lFs) ? NineHandsMenu::icoSwitch : NineHandsMenu::icoKnob;
+            NineHandsMenu::addHeader (m, menuLnf.f, ico, NineHandsMenu::kAccent, CrycatProcessor::learnDef (learnIdx).name,
+                                      "MIDI: " + proc.learnAssignText (learnIdx));
+            addLearnSection (m, learnIdx);
+        }
+        else
+            NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPedal, NineHandsMenu::kAccent, "Crycat",
+                                      "Vocal wah  v" + String (JucePlugin_VersionString));
         const bool onFs = learnIdx == CrycatProcessor::lFs;
         const bool onToggle = learnIdx == CrycatProcessor::lAuto;
         if (onFs || onToggle)
@@ -1004,11 +1114,9 @@ private:
             m.addItem (42, "Latching (127 = ON, 0 = OFF)", true, param ("latch"));
             m.addSeparator();
         }
-        else
+        else if (learnIdx < 0 || learnIdx == CrycatProcessor::lPedal)
         {
-            m.addSectionHeader ("Expression pedal (" + proc.getMidiDescription (MidiTarget::Pedal) + ")");
-            m.addItem (31, "MIDI learn pedal controller");
-            m.addItem (32, "Clear pedal MIDI assignment", proc.learnAssignText (CrycatProcessor::lPedal) != "none");
+            m.addSectionHeader ("Expression pedal");
             m.addItem (35, "Calibrate (sweep heel <-> toe for 6 s)  -  " + proc.calibrationDescription());
             m.addItem (34, "Reset pedal calibration");
             m.addItem (33, "Invert pedal direction", true, param ("invert"));
@@ -1024,14 +1132,23 @@ private:
             m.addSubMenu ("Switch off after resting on the heel", rel);
             m.addItem (53, "Respond to MIDI Program Change (PC 1-10)", true, param ("pc"));
             m.addSeparator();
-            if (learnIdx < 0) addMidiSubmenu (m);
         }
-        PopupMenu sizes;
+        if (learnIdx < 0) addMidiSubmenu (m);
+        PopupMenu sizes, glowM;
         addSizeItems (sizes, ed);
         m.addSubMenu ("Plugin size", sizes);
+        {
+            const int nowPc = roundToInt (glow * 100.0f);
+            for (int i = 0; i < NineHandsGlow::numSteps; ++i)
+            {
+                const int pc = NineHandsGlow::steps[i];
+                glowM.addItem (81 + i, "Glow " + String (pc) + " %" + (pc == 100 ? "  (default)" : ""), true, nowPc == pc);
+            }
+        }
+        m.addSubMenu ("Glow (halo of the lights)", glowM);
 
         Component::SafePointer<PedalView> sp (this);
-        m.showMenuAsync (PopupMenu::Options(), [sp] (int res)
+        m.showMenuAsync (PopupMenu::Options().withMousePosition(), [sp] (int res)      // toujours là où l'on clique
         {
             if (sp == nullptr || res == 0) return;
             auto& pr = sp->proc;
@@ -1039,8 +1156,6 @@ private:
             if (res >= 1000) { sp->handleLearnChoice (res); return; }
             switch (res)
             {
-                case 31: pr.startMidiLearn (MidiTarget::Pedal); break;
-                case 32: pr.clearMidi (MidiTarget::Pedal); break;
                 case 33: pr.togglePedalSwitch ("invert"); break;
                 case 34: pr.resetCalibration(); break;
                 case 35: pr.startCalibration(); break;
@@ -1050,6 +1165,13 @@ private:
                 default:
                     if (res >= 61 && res <= 66) pr.setParamValue ("smooth", (float) glideMs[res - 61]);
                     else if (res >= 71 && res <= 75) pr.setParamValue ("autooff", (float) relMs[res - 71]);
+                    else if (res >= 81 && res < 81 + NineHandsGlow::numSteps)
+                    {
+                        const int pc = NineHandsGlow::steps[res - 81];
+                        NineHandsGlow::setPercent (JucePlugin_Name, pc);
+                        sp->glow = (float) pc / 100.0f;
+                        sp->repaint();
+                    }
                     else handleSizeChoice (res, sp->findParentComponentOfClass<CrycatEditor>());
                     break;
             }
@@ -1057,10 +1179,14 @@ private:
     }
 
     CrycatProcessor& proc;
-    ScaledCache bg, fsOff, fsOn, ledGlow, tgL, tgM, tgR;
+    ScaledCache bg, fsRefl, ledOn, ledGlow, tg[3];
+    Image markerSrc, markerBig, markerSmall, print;
     TreadleWarp treadle;
-    Typeface::Ptr typeface, typefaceBold;
+    Typeface::Ptr tfReg, tfMed, tfBold;
+    std::unique_ptr<Drawable> cryLogo;
+    NineHandsMenu::MenuLnf menuLnf;
     float s = kDefaultScale * kRefH / (float) kH;
+    float glow = 1.0f;                     // réglage Glow (1 = 100 %)
 
     // anti-gel v2 : échelle d'affichage, stabilisation après redimensionnement, suivi des redessins
     float dispScale = 1.0f, approxScale = 1.0f;
@@ -1072,13 +1198,14 @@ private:
 
     Drag drag = Drag::None;
     float dragStartY = 0, dragStartVal = 0;
-    int dragStartRange = 0;
+    int dragStartRange = 0, pillHover = 0;
     bool pressed = false, drawnStarted = false, drawnToggleMoving = false;
-    double toggleMidUntil = 0.0;
-    float ledLevel = 0.0f, drawnLed = -1.0f;
+    double toggleMidUntil = 0.0, statusUntil = 0.0;
+    float ledLevel = 0.0f, drawnLed = -1.0f, statusAlpha = 0.0f, drawnStatusAlpha = -1.0f;
+    MarkerAnim rangeAnim, smallAnim[3];
 
     float drawnPedal = -1.0f, drawnSmall[3] = { -1.0f, -1.0f, -1.0f };
-    int drawnRange = -1;
+    int drawnRange = -1, drawnFactory = -1;
     bool drawnAuto = false, drawnOn = true, drawnArmed = false;
     String drawnStatus;
     String learnMsg;                       // "Q = CC 21" pendant 2 s après un MIDI Learn
