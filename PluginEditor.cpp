@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "NineHandsUserPresets.h"
 #include <BinaryData.h>
 #include "WigaWindowSize.h"
 #include "NineHandsMenu.h"
@@ -435,7 +436,7 @@ namespace
         m.addSubMenu ("Default size (new windows)", defSizes);
     }
 
-    void handleSizeChoice (int r, CrycatEditor* ed)
+    void handleSizeChoiceOld (int r, CrycatEditor* ed)
     {
         if (ed == nullptr) return;
         if (r >= 901 && r < 901 + kNumSizes) ed->setScaleIndex (r - 901);
@@ -1088,91 +1089,114 @@ private:
         else if (r == 1201) proc.clearMidiMap();
     }
 
-    void showMenu (Point<float> p)
+public:
+    PopupMenu buildMenu (int learnIdx)
     {
+        using namespace NineHandsMenu;
         auto* ed = findParentComponentOfClass<CrycatEditor>();
         PopupMenu m;
         m.setLookAndFeel (&menuLnf);
-        const int learnIdx = learnIndexAt (p);
+        const int lt = proc.learnTarget.load();
+        auto assign = [this] (int i) { const auto a = proc.learnAssignText (i); return a == "none" ? String ("not assigned") : a; };
         if (learnIdx >= 0)
         {
-            const int ico = learnIdx == CrycatProcessor::lPedal ? NineHandsMenu::icoPedal
-                          : (learnIdx == CrycatProcessor::lAuto || learnIdx == CrycatProcessor::lFs) ? NineHandsMenu::icoSwitch : NineHandsMenu::icoKnob;
-            NineHandsMenu::addHeader (m, menuLnf.f, ico, NineHandsMenu::kAccent, CrycatProcessor::learnDef (learnIdx).name,
-                                      "MIDI: " + proc.learnAssignText (learnIdx));
-            addLearnSection (m, learnIdx);
+            // menu d'une commande (tronc commun) : en-tête, MIDI Learn, Clear MIDI, Cancel MIDI learn
+            const int ico = learnIdx == CrycatProcessor::lPedal ? icoPedal
+                          : (learnIdx == CrycatProcessor::lAuto || learnIdx == CrycatProcessor::lFs) ? icoSwitch : icoKnob;
+            const String name = CrycatProcessor::learnDef (learnIdx).name;
+            addHeader (m, menuLnf.f, ico, kAccent, name, "MIDI: " + assign (learnIdx));
+            m.addItem (1000 + learnIdx, "MIDI Learn: " + name, true, lt == learnIdx);
+            m.addItem (1100 + learnIdx, "Clear MIDI: " + name, proc.learnAssignText (learnIdx) != "none");
+            m.addItem (1200, "Cancel MIDI learn", lt >= 0);
+            return m;
         }
-        else
-            NineHandsMenu::addHeader (m, menuLnf.f, NineHandsMenu::icoPedal, NineHandsMenu::kAccent, "Crycat",
-                                      "Vocal wah  v" + String (JucePlugin_VersionString));
-        const bool onFs = learnIdx == CrycatProcessor::lFs;
-        const bool onToggle = learnIdx == CrycatProcessor::lAuto;
-        if (onFs || onToggle)
-        {
-            m.addSectionHeader ("MIDI switch messages");
-            m.addItem (41, "Momentary (each press toggles)", true, ! param ("latch"));
-            m.addItem (42, "Latching (127 = ON, 0 = OFF)", true, param ("latch"));
-            m.addSeparator();
-        }
-        else if (learnIdx < 0 || learnIdx == CrycatProcessor::lPedal)
-        {
-            m.addSectionHeader ("Expression pedal");
-            m.addItem (35, "Calibrate (sweep heel <-> toe for 6 s)  -  " + proc.calibrationDescription());
-            m.addItem (34, "Reset pedal calibration");
-            m.addItem (33, "Invert pedal direction", true, param ("invert"));
-            PopupMenu glide;
-            const float gl = proc.apvts.getRawParameterValue ("smooth")->load();
-            for (int i = 0; i < 6; ++i) { const int ms[6] = { 0, 8, 15, 30, 60, 120 }; glide.addItem (61 + i, String (ms[i]) + " ms", true, std::abs (gl - (float) ms[i]) < 1.0f); }
-            m.addSubMenu ("Pedal glide (smoothing)", glide);
-            m.addSeparator();
-            m.addSectionHeader ("Auto-engage");
-            PopupMenu rel;
-            const float ao = proc.apvts.getRawParameterValue ("autooff")->load();
-            for (int i = 0; i < 5; ++i) { const int ms[5] = { 150, 300, 400, 800, 1500 }; rel.addItem (71 + i, String (ms[i]) + " ms", true, std::abs (ao - (float) ms[i]) < 1.0f); }
-            m.addSubMenu ("Switch off after resting on the heel", rel);
-            m.addItem (53, "Respond to MIDI Program Change (PC 1-10)", true, param ("pc"));
-            m.addSeparator();
-        }
-        if (learnIdx < 0) addMidiSubmenu (m);
-        PopupMenu sizes, glowM;
-        addSizeItems (sizes, ed);
-        m.addSubMenu ("Plugin size", sizes);
-        {
-            const int nowPc = roundToInt (glow * 100.0f);
-            for (int i = 0; i < NineHandsGlow::numSteps; ++i)
-            {
-                const int pc = NineHandsGlow::steps[i];
-                glowM.addItem (81 + i, "Glow " + String (pc) + " %" + (pc == 100 ? "  (default)" : ""), true, nowPc == pc);
-            }
-        }
-        m.addSubMenu ("Glow (halo of the lights)", glowM);
 
+        addHeader (m, menuLnf.f, icoPedal, kAccent, "Crycat", "Vocal wah  v" + String (JucePlugin_VersionString));
+        PopupMenu factory;
+        const int cur = proc.getCurrentFactory();
+        for (int i = 0; i < CrycatProcessor::kNumFactory; ++i)
+            factory.addItem (101 + i, String (i + 1) + ". " + CrycatProcessor::factory (i).name, true, i == cur && userSlot == 0);
+        m.addSubMenu ("Factory presets", factory);
+        NineHandsUserPresets::addMenus (m, "Crycat", 200, 300, userSlot);
+        m.addSeparator();
+
+        m.addSectionHeader ("Expression pedal");
+        PopupMenu glide;
+        const float gl = proc.apvts.getRawParameterValue ("smooth")->load();
+        for (int i = 0; i < 6; ++i) { const int ms[6] = { 0, 8, 15, 30, 60, 120 }; glide.addItem (61 + i, String (ms[i]) + " ms", true, std::abs (gl - (float) ms[i]) < 1.0f); }
+        m.addSubMenu ("Pedal glide (smoothing)", glide);
+        m.addSectionHeader ("Auto-engage");
+        PopupMenu rel;
+        const float ao = proc.apvts.getRawParameterValue ("autooff")->load();
+        for (int i = 0; i < 5; ++i) { const int ms[5] = { 150, 300, 400, 800, 1500 }; rel.addItem (71 + i, String (ms[i]) + " ms", true, std::abs (ao - (float) ms[i]) < 1.0f); }
+        m.addSubMenu ("Switch off after resting on the heel", rel);
+        m.addSeparator();
+
+        PopupMenu midi;
+        midi.addSectionHeader ("MIDI Learn");
+        for (int i = 0; i < CrycatProcessor::numLearn; ++i)
+            midi.addItem (1000 + i, String ("Learn: ") + CrycatProcessor::learnDef (i).name + "  (" + assign (i) + ")", true, lt == i);
+        midi.addSeparator();
+        midi.addItem (1200, "Cancel MIDI learn", lt >= 0);
+        midi.addItem (1201, "Clear all MIDI assignments");
+        midi.addSeparator();
+        NineHandsWindow::addMidiFootswitchMode (midi, param ("latch"));
+        midi.addSeparator();
+        midi.addSectionHeader ("Expression pedal");
+        midi.addItem (35, "Calibrate (sweep heel <-> toe for 6 s)  -  " + proc.calibrationDescription());
+        midi.addItem (33, "Invert pedal direction", true, param ("invert"));
+        midi.addItem (34, "Reset pedal calibration");
+        midi.addItem (53, "Respond to MIDI Program Change (PC 1-10)", true, param ("pc"));
+        midi.addSeparator();
+        NineHandsWindow::addProgramChangeInfo (midi);
+        m.addSubMenu ("MIDI", midi);
+        m.addSeparator();
+
+        const char* names[kNumSizes] = { "60 %", "75 %", "100 %" };
+        int heights[kNumSizes];
+        for (int i = 0; i < kNumSizes; ++i) heights[i] = (int) std::lround (kRefH * kScales[i]);
+        m.addSubMenu ("Plugin size", NineHandsWindow::sizeMenu (JucePlugin_Name, kNumSizes, names, heights, ed != nullptr ? ed->getHeight() : 0));
+        m.addSubMenu ("Glow intensity", NineHandsWindow::glowMenu (roundToInt (glow * 100.0f)));
+        return m;
+    }
+private:
+    int userSlot = 0;                      // preset utilisateur charge (1..9), 0 = aucun
+
+    void showMenu (Point<float> p)
+    {
+        auto m = buildMenu (learnIndexAt (p));
         Component::SafePointer<PedalView> sp (this);
         m.showMenuAsync (PopupMenu::Options().withMousePosition(), [sp] (int res)      // toujours là où l'on clique
         {
-            if (sp == nullptr || res == 0) return;
+            if (sp == nullptr || res == 0 || res == 9001) return;
             auto& pr = sp->proc;
             const int glideMs[6] = { 0, 8, 15, 30, 60, 120 }, relMs[5] = { 150, 300, 400, 800, 1500 };
+            if (auto* ed = sp->findParentComponentOfClass<CrycatEditor>())
+            {
+                int inst = pr.uiScaleIdx.load();
+                const int sz = NineHandsWindow::handleSize (res, JucePlugin_Name, kNumSizes, inst);
+                if (sz >= 0) { pr.uiScaleIdx = inst; ed->applyScaleIndex (sz); return; }
+            }
+            if (const int pc = NineHandsWindow::handleGlow (res, JucePlugin_Name)) { sp->glow = (float) pc / 100.0f; sp->repaint(); return; }
             if (res >= 1000) { sp->handleLearnChoice (res); return; }
+            if (res >= 101 && res < 101 + CrycatProcessor::kNumFactory) { pr.loadFactory (res - 101); sp->userSlot = 0; sp->statusUntil = 0.0; return; }
+            if (res > 200 && res < 210) { if (NineHandsUserPresets::load (pr, "Crycat", res - 200)) sp->userSlot = res - 200; return; }
+            if (res > 300 && res < 310)
+            {
+                if (NineHandsUserPresets::save (pr, "Crycat", res - 300, { "heel", "toe", "invert", "pc", "latch" })) sp->userSlot = res - 300;
+                return;
+            }
             switch (res)
             {
                 case 33: pr.togglePedalSwitch ("invert"); break;
                 case 34: pr.resetCalibration(); break;
                 case 35: pr.startCalibration(); break;
-                case 41: pr.setParamValue ("latch", 0.0f); break;
-                case 42: pr.setParamValue ("latch", 1.0f); break;
                 case 53: pr.togglePedalSwitch ("pc"); break;
                 default:
-                    if (res >= 61 && res <= 66) pr.setParamValue ("smooth", (float) glideMs[res - 61]);
+                    if (res == NineHandsWindow::idLatch)          pr.setParamValue ("latch", 1.0f);
+                    else if (res == NineHandsWindow::idMomentary) pr.setParamValue ("latch", 0.0f);
+                    else if (res >= 61 && res <= 66) pr.setParamValue ("smooth", (float) glideMs[res - 61]);
                     else if (res >= 71 && res <= 75) pr.setParamValue ("autooff", (float) relMs[res - 71]);
-                    else if (res >= 81 && res < 81 + NineHandsGlow::numSteps)
-                    {
-                        const int pc = NineHandsGlow::steps[res - 81];
-                        NineHandsGlow::setPercent (JucePlugin_Name, pc);
-                        sp->glow = (float) pc / 100.0f;
-                        sp->repaint();
-                    }
-                    else handleSizeChoice (res, sp->findParentComponentOfClass<CrycatEditor>());
                     break;
             }
         });
@@ -1219,15 +1243,14 @@ CrycatEditor::CrycatEditor (CrycatProcessor& p) : AudioProcessorEditor (&p), pro
     addAndMakeVisible (*view);
     setResizable (true, true);
     const int minH = (int) std::lround (kRefH * kDefaultScale);          // jamais plus petit que la taille par défaut
-    const int maxH = 1120;
+    const int maxH = 1115;                                               // 150 %
     setResizeLimits ((int) std::lround ((double) minH * kW / kH), minH, (int) std::lround ((double) maxH * kW / kH), maxH);
+    hostLock.setLimits ((int) std::lround ((double) minH * kW / kH), minH, (int) std::lround ((double) maxH * kW / kH), maxH);
     getConstrainer()->setFixedAspectRatio ((double) kW / (double) kH);
     setOpaque (true);                    // anti-gel : l'hôte ne redessine jamais ce qui est derrière la fenêtre
     // taille d'ouverture : celle enregistrée pour cette instance (projet) si elle existe,
     // sinon celle choisie dans le menu « Default size (new windows) »
-    const int saved = jlimit (-1, 2, proc.uiScaleIdx.load());
-    if (saved >= 0) setScaleIndex (saved);
-    else            applyScaleIndex (WigaWindowSize::defaultIndex (JucePlugin_Name, kNumSizes));
+    applyScaleIndex (NineHandsWindow::openIndex (JucePlugin_Name, proc.uiScaleIdx.load(), kNumSizes));
     view->initCaches();
 }
 
@@ -1265,6 +1288,7 @@ void CrycatEditor::checkRenderer()
 {
     if ((void*) getPeer() != lastPeer || Time::getMillisecondCounterHiRes() - lastRendererCheckMs > 1000.0)
         useSoftwareRenderer();
+    hostLock.track (*this);
 }
 
 void CrycatEditor::resetRenderer()
@@ -1275,7 +1299,7 @@ void CrycatEditor::resetRenderer()
 }
 
 void CrycatEditor::paint (Graphics& g) { g.fillAll (Colours::black); }   // la pédale recouvre tout ; fenêtre opaque
-void CrycatEditor::parentHierarchyChanged() { useSoftwareRenderer(); }
+void CrycatEditor::parentHierarchyChanged() { useSoftwareRenderer(); hostLock.track (*this); }
 void CrycatEditor::visibilityChanged()      { useSoftwareRenderer(); if (isShowing()) repaint(); }
 
 void CrycatEditor::resized()
@@ -1303,4 +1327,7 @@ void CrycatEditor::applyScaleIndex (int idx)
     const float sc = kScales[jlimit (0, 2, idx)];
     const int h = (int) std::lround (kRefH * sc);
     setSize ((int) std::lround ((double) h * kW / kH), h);
+    hostLock.enforce();
 }
+
+juce::PopupMenu CrycatEditor::buildContextMenu (int learnIdx) { return view->buildMenu (learnIdx); }
