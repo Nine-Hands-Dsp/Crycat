@@ -33,8 +33,8 @@ const CrycatProcessor::LearnDef& CrycatProcessor::learnDef (int i)
         { "q",      "Q",                   -1, learnContinuous, 0 },
         { "purr",   "Purr",                -1, learnContinuous, 0 },
         { "boost",  "Boost",               -1, learnContinuous, 0 },
-        { "auto",   "MAN / AUTO switch",   -1, learnFootswitch, 0 },   // momentane / a accrochage, comme avant
-        { "active", "ON / OFF footswitch", -1, learnFootswitch, 0 },
+        { "auto",   "Man/Auto switch",   -1, learnFootswitch, 0 },   // momentane / a accrochage, comme avant
+        { "active", "Bypass", -1, learnFootswitch, 0 },
     };
     return defs[jlimit (0, numLearn - 1, i)];
 }
@@ -237,7 +237,7 @@ void CrycatProcessor::handleMidiMessage (const MidiMessage& m)
         }
     }
 
-    const bool latch = pLatch->load (std::memory_order_relaxed) > 0.5f;
+    const bool latch = true;                        // footswitchs MIDI : 127 = on / 0 = off (menu final)
     if (m.isController())
     {
         const int c = m.getControllerNumber(), v = m.getControllerValue();

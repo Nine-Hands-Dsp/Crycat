@@ -1115,40 +1115,35 @@ public:
         PopupMenu factory;
         const int cur = proc.getCurrentFactory();
         for (int i = 0; i < CrycatProcessor::kNumFactory; ++i)
-            factory.addItem (101 + i, String (i + 1) + ". " + CrycatProcessor::factory (i).name, true, i == cur && userSlot == 0);
+            NineHandsMenu::addItem (factory, 101 + i, String (i + 1) + ". " + CrycatProcessor::factory (i).name, icoDot, true, i == cur && userSlot == 0);
         m.addSubMenu ("Factory presets", factory);
         NineHandsUserPresets::addMenus (m, "Crycat", 200, 300, userSlot);
         m.addSeparator();
 
-        m.addSectionHeader ("Expression pedal");
-        PopupMenu glide;
+        PopupMenu settings;
+        settings.addSectionHeader ("Pedal glide (smoothing)");
         const float gl = proc.apvts.getRawParameterValue ("smooth")->load();
-        for (int i = 0; i < 6; ++i) { const int ms[6] = { 0, 8, 15, 30, 60, 120 }; glide.addItem (61 + i, String (ms[i]) + " ms", true, std::abs (gl - (float) ms[i]) < 1.0f); }
-        m.addSubMenu ("Pedal glide (smoothing)", glide);
-        m.addSectionHeader ("Auto-engage");
-        PopupMenu rel;
+        for (int i = 0; i < 6; ++i) { const int ms[6] = { 0, 8, 15, 30, 60, 120 }; settings.addItem (61 + i, String (ms[i]) + " ms", true, std::abs (gl - (float) ms[i]) < 1.0f); }
+        settings.addSeparator();
+        settings.addSectionHeader ("Switch off on heel after");
         const float ao = proc.apvts.getRawParameterValue ("autooff")->load();
-        for (int i = 0; i < 5; ++i) { const int ms[5] = { 150, 300, 400, 800, 1500 }; rel.addItem (71 + i, String (ms[i]) + " ms", true, std::abs (ao - (float) ms[i]) < 1.0f); }
-        m.addSubMenu ("Switch off after resting on the heel", rel);
+        for (int i = 0; i < 5; ++i) { const int ms[5] = { 150, 300, 400, 800, 1500 }; settings.addItem (71 + i, String (ms[i]) + " ms", true, std::abs (ao - (float) ms[i]) < 1.0f); }
+        m.addSubMenu ("Settings", settings);
         m.addSeparator();
 
         PopupMenu midi;
         midi.addSectionHeader ("MIDI Learn");
         for (int i = 0; i < CrycatProcessor::numLearn; ++i)
-            midi.addItem (1000 + i, String ("Learn: ") + CrycatProcessor::learnDef (i).name + "  (" + assign (i) + ")", true, lt == i);
+            NineHandsMenu::addItem (midi, 1000 + i, String ("Learn: ") + CrycatProcessor::learnDef (i).name + " (" + assign (i) + ")", i == CrycatProcessor::lFs ? icoSwitch : icoMidi, true, lt == i);
         midi.addSeparator();
         midi.addItem (1200, "Cancel MIDI learn", lt >= 0);
         midi.addItem (1201, "Clear all MIDI assignments");
-        midi.addSeparator();
-        NineHandsWindow::addMidiFootswitchMode (midi, param ("latch"));
         midi.addSeparator();
         midi.addSectionHeader ("Expression pedal");
         midi.addItem (35, "Calibrate (sweep heel <-> toe for 6 s)  -  " + proc.calibrationDescription());
         midi.addItem (33, "Invert pedal direction", true, param ("invert"));
         midi.addItem (34, "Reset pedal calibration");
         midi.addItem (53, "Respond to MIDI Program Change (PC 1-10)", true, param ("pc"));
-        midi.addSeparator();
-        NineHandsWindow::addProgramChangeInfo (midi);
         m.addSubMenu ("MIDI", midi);
         m.addSeparator();
 
