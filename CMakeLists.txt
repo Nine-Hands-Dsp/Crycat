@@ -47,7 +47,7 @@ juce_add_plugin(Crycat
   AU_MAIN_TYPE kAudioUnitType_MusicEffect
   VST3_CATEGORIES Fx Filter
   PRODUCT_NAME "Crycat"
-  VERSION 2.1.0
+  VERSION ${PROJECT_VERSION}
   DESCRIPTION "Inductor wah pedal (Cry Baby-style) - double pedal format"
   IS_SYNTH FALSE
   NEEDS_MIDI_INPUT TRUE
